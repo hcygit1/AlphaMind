@@ -1,7 +1,7 @@
 """End-to-end test: run TradingAgents pipeline on A-stock 688017 via Kimi 2.6."""
 
-from tradingagents.graph.trading_graph import TradingAgentsGraph
-from tradingagents.default_config import DEFAULT_CONFIG
+from alphamind.graph.trading_graph import AlphaMindGraph
+from alphamind.default_config import DEFAULT_CONFIG
 
 from dotenv import load_dotenv
 
@@ -29,14 +29,14 @@ config["max_risk_discuss_rounds"] = 1
 config["output_language"] = "Chinese"
 
 print("=" * 60)
-print("TradingAgents-Astock E2E Test")
+print("AlphaMind E2E Test")
 print("Ticker: 688017")
 print("Trade date: 2026-04-30")
 print("LLM: Kimi 2.6 via Anthropic API")
 print("Data: a_stock (mootdx + tencent + eastmoney + sina)")
 print("=" * 60)
 
-ta = TradingAgentsGraph(debug=True, config=config)
+ta = AlphaMindGraph(debug=True, config=config)
 
 _, decision = ta.propagate("688017", "2026-04-30")
 print("\n" + "=" * 60)

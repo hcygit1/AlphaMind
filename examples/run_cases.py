@@ -18,8 +18,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from tradingagents.graph.trading_graph import TradingAgentsGraph
-from tradingagents.default_config import DEFAULT_CONFIG
+from alphamind.graph.trading_graph import AlphaMindGraph
+from alphamind.default_config import DEFAULT_CONFIG
 
 # ── Config ───────────────────────────────────────────────────────────────────
 
@@ -72,7 +72,7 @@ def run_single(ticker: str, label: str, config: dict) -> None:
     print(f"{'=' * 60}\n")
 
     start_time = time.time()
-    ta = TradingAgentsGraph(debug=True, config=config)
+    ta = AlphaMindGraph(debug=True, config=config)
 
     full_decision = ""
     try:

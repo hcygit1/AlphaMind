@@ -10,7 +10,7 @@
 
 | 文件 | 说明 |
 |------|------|
-| `tradingagents/dataflows/a_stock.py` | A 股数据 vendor，~400 行，9 个接口方法 |
+| `alphamind/dataflows/a_stock.py` | A 股数据 vendor，~400 行，9 个接口方法 |
 | `test_astock.py` | E2E 集成测试脚本 |
 | `.env` | 环境变量模板（已加入 .gitignore） |
 
@@ -18,8 +18,8 @@
 
 | 文件 | 改动 |
 |------|------|
-| `tradingagents/dataflows/interface.py` | 注册 `a_stock` vendor，9 个方法路由到 `a_stock.py` |
-| `tradingagents/default_config.py` | `data_vendors` 全部默认改为 `"a_stock"`；新增 `output_language` 配置项 |
+| `alphamind/dataflows/interface.py` | 注册 `a_stock` vendor，9 个方法路由到 `a_stock.py` |
+| `alphamind/default_config.py` | `data_vendors` 全部默认改为 `"a_stock"`；新增 `output_language` 配置项 |
 
 ### 数据源架构
 
@@ -43,8 +43,8 @@
 
 | 文件 | 改动 |
 |------|------|
-| `tradingagents/default_config.py` | 新增 `output_language: "Chinese"` |
-| `tradingagents/agents/utils/agent_utils.py` | 新增 `get_language_instruction()` 函数 |
+| `alphamind/default_config.py` | 新增 `output_language: "Chinese"` |
+| `alphamind/agents/utils/agent_utils.py` | 新增 `get_language_instruction()` 函数 |
 
 当 `output_language` 为 `"Chinese"` 时，所有用户面向的 Agent 输出中文报告；Bull/Bear 辩论和三方风险辩论保持英文（推理质量 > 输出语言一致性）。
 
@@ -52,10 +52,10 @@
 
 | 文件 | 改动 |
 |------|------|
-| `tradingagents/agents/analysts/market_analyst.py` | prompt 加入 A 股技术分析上下文 + 中文指令 |
-| `tradingagents/agents/analysts/social_media_analyst.py` | prompt 改为 A 股舆情分析 + 中文指令 |
-| `tradingagents/agents/analysts/news_analyst.py` | prompt 加入 A 股新闻解读 + 中文指令 |
-| `tradingagents/agents/analysts/fundamentals_analyst.py` | prompt 加入 A 股财报分析 + 中文指令 |
+| `alphamind/agents/analysts/market_analyst.py` | prompt 加入 A 股技术分析上下文 + 中文指令 |
+| `alphamind/agents/analysts/social_media_analyst.py` | prompt 改为 A 股舆情分析 + 中文指令 |
+| `alphamind/agents/analysts/news_analyst.py` | prompt 加入 A 股新闻解读 + 中文指令 |
+| `alphamind/agents/analysts/fundamentals_analyst.py` | prompt 加入 A 股财报分析 + 中文指令 |
 
 ### P2：3 个 A 股特化角色（新增）
 
@@ -63,19 +63,19 @@
 
 | 新文件 | 角色 | 职责 |
 |--------|------|------|
-| `tradingagents/agents/analysts/policy_analyst.py` | 政策分析师 | 监管政策、产业政策、窗口指导 |
-| `tradingagents/agents/analysts/hot_money_tracker.py` | 游资追踪师 | 龙虎榜、大单流向、主力资金动态 |
-| `tradingagents/agents/analysts/lockup_watcher.py` | 解禁监控师 | 限售股解禁、大股东减持、股权质押 |
+| `alphamind/agents/analysts/policy_analyst.py` | 政策分析师 | 监管政策、产业政策、窗口指导 |
+| `alphamind/agents/analysts/hot_money_tracker.py` | 游资追踪师 | 龙虎榜、大单流向、主力资金动态 |
+| `alphamind/agents/analysts/lockup_watcher.py` | 解禁监控师 | 限售股解禁、大股东减持、股权质押 |
 
 配套修改：
 
 | 文件 | 改动 |
 |------|------|
-| `tradingagents/agents/utils/agent_states.py` | `AgentState` 新增 `policy_report` / `hot_money_report` / `lockup_report` 字段 |
-| `tradingagents/agents/__init__.py` | 导出 3 个新的 `create_*` 工厂函数 |
-| `tradingagents/graph/conditional_logic.py` | 新增 3 个 analyst 的 tool call 路由函数 |
-| `tradingagents/graph/trading_graph.py` | 将 3 个新 analyst 加入默认 analyst 列表 |
-| `tradingagents/graph/setup.py` | 为 3 个新 analyst 创建节点、工具节点、边和条件路由 |
+| `alphamind/agents/utils/agent_states.py` | `AgentState` 新增 `policy_report` / `hot_money_report` / `lockup_report` 字段 |
+| `alphamind/agents/__init__.py` | 导出 3 个新的 `create_*` 工厂函数 |
+| `alphamind/graph/conditional_logic.py` | 新增 3 个 analyst 的 tool call 路由函数 |
+| `alphamind/graph/trading_graph.py` | 将 3 个新 analyst 加入默认 analyst 列表 |
+| `alphamind/graph/setup.py` | 为 3 个新 analyst 创建节点、工具节点、边和条件路由 |
 
 ### P3：下游 Agent 接入 3 个新报告
 
@@ -85,17 +85,17 @@
 
 | 文件 | 改动 |
 |------|------|
-| `tradingagents/agents/researchers/bull_researcher.py` | 读取 3 个新报告 + 注入 prompt 的 Resources 段 |
-| `tradingagents/agents/researchers/bear_researcher.py` | 同上 |
-| `tradingagents/agents/risk_mgmt/aggressive_debator.py` | 读取 3 个新报告 + 注入 prompt |
-| `tradingagents/agents/risk_mgmt/conservative_debator.py` | 同上 |
-| `tradingagents/agents/risk_mgmt/neutral_debator.py` | 同上 |
+| `alphamind/agents/researchers/bull_researcher.py` | 读取 3 个新报告 + 注入 prompt 的 Resources 段 |
+| `alphamind/agents/researchers/bear_researcher.py` | 同上 |
+| `alphamind/agents/risk_mgmt/aggressive_debator.py` | 读取 3 个新报告 + 注入 prompt |
+| `alphamind/agents/risk_mgmt/conservative_debator.py` | 同上 |
+| `alphamind/agents/risk_mgmt/neutral_debator.py` | 同上 |
 
 ### P3-C：Portfolio Manager A 股约束
 
 | 文件 | 改动 |
 |------|------|
-| `tradingagents/agents/managers/portfolio_manager.py` | prompt 新增 A-Stock Trading Constraints 块：T+1 / 涨跌停 / 手数 / 交易时段 / ST / 融资融券 |
+| `alphamind/agents/managers/portfolio_manager.py` | prompt 新增 A-Stock Trading Constraints 块：T+1 / 涨跌停 / 手数 / 交易时段 / ST / 融资融券 |
 
 ---
 
@@ -103,10 +103,10 @@
 
 | 文件 | 改动 | 分类 |
 |------|------|------|
-| `tradingagents/graph/propagation.py` | `create_initial_state()` 新增 3 个缺失字段初始化 | 关键 Bug 修复 |
-| `tradingagents/agents/trader/trader.py` | 完全重写为 A 股特化 — 读取 3 个新报告 + T+1/涨跌停约束 | 功能增强 |
-| `tradingagents/graph/reflection.py` | Alpha 基准从 `SPY` 改为 `CSI 300（沪深300）` | A 股适配 |
-| `tradingagents/agents/managers/research_manager.py` | prompt 加入 A 股分析维度提示 | A 股适配 |
+| `alphamind/graph/propagation.py` | `create_initial_state()` 新增 3 个缺失字段初始化 | 关键 Bug 修复 |
+| `alphamind/agents/trader/trader.py` | 完全重写为 A 股特化 — 读取 3 个新报告 + T+1/涨跌停约束 | 功能增强 |
+| `alphamind/graph/reflection.py` | Alpha 基准从 `SPY` 改为 `CSI 300（沪深300）` | A 股适配 |
+| `alphamind/agents/managers/research_manager.py` | prompt 加入 A 股分析维度提示 | A 股适配 |
 
 ---
 
@@ -115,33 +115,33 @@
 共计 **22 个文件**改动（Week 1 + Week 2 + Week 2.5）：
 
 ### 新增（4 个）
-- `tradingagents/dataflows/a_stock.py`
-- `tradingagents/agents/analysts/policy_analyst.py`
-- `tradingagents/agents/analysts/hot_money_tracker.py`
-- `tradingagents/agents/analysts/lockup_watcher.py`
+- `alphamind/dataflows/a_stock.py`
+- `alphamind/agents/analysts/policy_analyst.py`
+- `alphamind/agents/analysts/hot_money_tracker.py`
+- `alphamind/agents/analysts/lockup_watcher.py`
 
 ### 修改（18 个）
-- `tradingagents/dataflows/interface.py`
-- `tradingagents/default_config.py`
-- `tradingagents/agents/analysts/market_analyst.py`
-- `tradingagents/agents/analysts/social_media_analyst.py`
-- `tradingagents/agents/analysts/news_analyst.py`
-- `tradingagents/agents/analysts/fundamentals_analyst.py`
-- `tradingagents/agents/utils/agent_states.py`
-- `tradingagents/agents/__init__.py`
-- `tradingagents/graph/conditional_logic.py`
-- `tradingagents/graph/trading_graph.py`
-- `tradingagents/graph/setup.py`
-- `tradingagents/graph/propagation.py`
-- `tradingagents/graph/reflection.py`
-- `tradingagents/agents/researchers/bull_researcher.py`
-- `tradingagents/agents/researchers/bear_researcher.py`
-- `tradingagents/agents/risk_mgmt/aggressive_debator.py`
-- `tradingagents/agents/risk_mgmt/conservative_debator.py`
-- `tradingagents/agents/risk_mgmt/neutral_debator.py`
-- `tradingagents/agents/managers/portfolio_manager.py`
-- `tradingagents/agents/managers/research_manager.py`
-- `tradingagents/agents/trader/trader.py`
+- `alphamind/dataflows/interface.py`
+- `alphamind/default_config.py`
+- `alphamind/agents/analysts/market_analyst.py`
+- `alphamind/agents/analysts/social_media_analyst.py`
+- `alphamind/agents/analysts/news_analyst.py`
+- `alphamind/agents/analysts/fundamentals_analyst.py`
+- `alphamind/agents/utils/agent_states.py`
+- `alphamind/agents/__init__.py`
+- `alphamind/graph/conditional_logic.py`
+- `alphamind/graph/trading_graph.py`
+- `alphamind/graph/setup.py`
+- `alphamind/graph/propagation.py`
+- `alphamind/graph/reflection.py`
+- `alphamind/agents/researchers/bull_researcher.py`
+- `alphamind/agents/researchers/bear_researcher.py`
+- `alphamind/agents/risk_mgmt/aggressive_debator.py`
+- `alphamind/agents/risk_mgmt/conservative_debator.py`
+- `alphamind/agents/risk_mgmt/neutral_debator.py`
+- `alphamind/agents/managers/portfolio_manager.py`
+- `alphamind/agents/managers/research_manager.py`
+- `alphamind/agents/trader/trader.py`
 
 ### 设计决策
 
@@ -161,18 +161,18 @@
 
 | 文件 | 说明 |
 |------|------|
-| `tradingagents/agents/utils/signal_data_tools.py` | 信号层 5 个 `@tool` 包装（get_profit_forecast / get_hot_stocks / get_northbound_flow / get_concept_blocks / get_fund_flow） |
+| `alphamind/agents/utils/signal_data_tools.py` | 信号层 5 个 `@tool` 包装（get_profit_forecast / get_hot_stocks / get_northbound_flow / get_concept_blocks / get_fund_flow） |
 
 ### 修改文件
 
 | 文件 | 改动 |
 |------|------|
-| `tradingagents/dataflows/a_stock.py` | 735→1277 行：增强 `get_fundamentals()` 内联一致预期EPS + forward PE/PEG；新增 5 个方法：`get_profit_forecast()` / `get_hot_stocks()` / `get_northbound_flow()` / `get_concept_blocks()` / `get_fund_flow()`；修复 ResultCode str/int 类型比较 bug |
-| `tradingagents/dataflows/interface.py` | 导入 5 个新 a_stock 函数；新增 `signal_data` 类别到 `TOOLS_CATEGORIES`；5 个新 entry 到 `VENDOR_METHODS` |
-| `tradingagents/default_config.py` | `data_vendors` 新增 `signal_data: "a_stock"` |
-| `tradingagents/agents/utils/agent_utils.py` | re-export 5 个新工具（get_profit_forecast / get_hot_stocks / get_northbound_flow / get_concept_blocks / get_fund_flow） |
-| `tradingagents/agents/analysts/hot_money_tracker.py` | tools 列表加 `get_hot_stocks` + `get_northbound_flow` + `get_concept_blocks` + `get_fund_flow`；prompt 新增工具说明和分析步骤 4-6 |
-| `tradingagents/agents/analysts/fundamentals_analyst.py` | tools 列表加 `get_profit_forecast`；prompt 新增估值工具说明 |
+| `alphamind/dataflows/a_stock.py` | 735→1277 行：增强 `get_fundamentals()` 内联一致预期EPS + forward PE/PEG；新增 5 个方法：`get_profit_forecast()` / `get_hot_stocks()` / `get_northbound_flow()` / `get_concept_blocks()` / `get_fund_flow()`；修复 ResultCode str/int 类型比较 bug |
+| `alphamind/dataflows/interface.py` | 导入 5 个新 a_stock 函数；新增 `signal_data` 类别到 `TOOLS_CATEGORIES`；5 个新 entry 到 `VENDOR_METHODS` |
+| `alphamind/default_config.py` | `data_vendors` 新增 `signal_data: "a_stock"` |
+| `alphamind/agents/utils/agent_utils.py` | re-export 5 个新工具（get_profit_forecast / get_hot_stocks / get_northbound_flow / get_concept_blocks / get_fund_flow） |
+| `alphamind/agents/analysts/hot_money_tracker.py` | tools 列表加 `get_hot_stocks` + `get_northbound_flow` + `get_concept_blocks` + `get_fund_flow`；prompt 新增工具说明和分析步骤 4-6 |
+| `alphamind/agents/analysts/fundamentals_analyst.py` | tools 列表加 `get_profit_forecast`；prompt 新增估值工具说明 |
 
 ### 新增数据源
 
@@ -191,11 +191,11 @@
 
 | 文件 | 改动 |
 |------|------|
-| `tradingagents/agents/researchers/bull_researcher.py` | prompt 注入 A-Share Bull Framework：政策顺风、北向确认、游资接力、PE 消化叙事、解禁出清 |
-| `tradingagents/agents/researchers/bear_researcher.py` | prompt 注入 A-Share Bear Framework：政策反转、解禁压力、游资撤退、T+1 锁仓、估值泡沫、北向撤退 |
-| `tradingagents/agents/risk_mgmt/aggressive_debator.py` | prompt 注入 A-Share Aggressive Framework：涨停动量、政策底、PE 扩张、散户放大、游资确认 |
-| `tradingagents/agents/risk_mgmt/conservative_debator.py` | prompt 注入 A-Share Conservative Framework：T+1 不可逃逸、跌停陷阱、解禁悬顶、政策反转、ST/退市 |
-| `tradingagents/agents/risk_mgmt/neutral_debator.py` | prompt 注入 A-Share Neutral Framework：T+1 双刃剑、政策分级、估值区间、轮动周期、仓位优先 |
+| `alphamind/agents/researchers/bull_researcher.py` | prompt 注入 A-Share Bull Framework：政策顺风、北向确认、游资接力、PE 消化叙事、解禁出清 |
+| `alphamind/agents/researchers/bear_researcher.py` | prompt 注入 A-Share Bear Framework：政策反转、解禁压力、游资撤退、T+1 锁仓、估值泡沫、北向撤退 |
+| `alphamind/agents/risk_mgmt/aggressive_debator.py` | prompt 注入 A-Share Aggressive Framework：涨停动量、政策底、PE 扩张、散户放大、游资确认 |
+| `alphamind/agents/risk_mgmt/conservative_debator.py` | prompt 注入 A-Share Conservative Framework：T+1 不可逃逸、跌停陷阱、解禁悬顶、政策反转、ST/退市 |
+| `alphamind/agents/risk_mgmt/neutral_debator.py` | prompt 注入 A-Share Neutral Framework：T+1 双刃剑、政策分级、估值区间、轮动周期、仓位优先 |
 
 ### 设计决策
 
@@ -209,7 +209,7 @@
 
 | 文件 | 改动 |
 |------|------|
-| `tradingagents/dataflows/a_stock.py` | **get_northbound_flow 重写**：删除不可用的 hsgtData 历史 API（返回 2024 年旧数据），改为实时数据 + 本地 CSV 自缓存（`northbound_daily.csv`）+ 趋势对比（today vs N-day avg）。新增 3 个私有函数：`_northbound_cache_path` / `_save_northbound_snapshot` / `_load_northbound_history`。**get_insider_transactions 截断**：F10 股东研究【4.股东变化】只保留最新一期（-70% token，19969→5906 chars） |
+| `alphamind/dataflows/a_stock.py` | **get_northbound_flow 重写**：删除不可用的 hsgtData 历史 API（返回 2024 年旧数据），改为实时数据 + 本地 CSV 自缓存（`northbound_daily.csv`）+ 趋势对比（today vs N-day avg）。新增 3 个私有函数：`_northbound_cache_path` / `_save_northbound_snapshot` / `_load_northbound_history`。**get_insider_transactions 截断**：F10 股东研究【4.股东变化】只保留最新一期（-70% token，19969→5906 chars） |
 
 ### 新增文件
 
@@ -237,18 +237,18 @@ eastmoney 全系北向资金接口（含 akshare `stock_hsgt_hist_em`、datacent
 
 | 文件 | 说明 |
 |------|------|
-| `tradingagents/agents/quality_gate.py` | 两层数据质量验证节点：Layer 1 硬检查（长度/失败标记/必采清单/表格）→ ABCDF 分级；Layer 2 LLM 复审（4+ 报告硬检查失败时跳过） |
+| `alphamind/agents/quality_gate.py` | 两层数据质量验证节点：Layer 1 硬检查（长度/失败标记/必采清单/表格）→ ABCDF 分级；Layer 2 LLM 复审（4+ 报告硬检查失败时跳过） |
 
 **修改文件**
 
 | 文件 | 改动 |
 |------|------|
-| `tradingagents/agents/utils/agent_states.py` | `AgentState` 新增 `data_quality_summary` 字段 |
-| `tradingagents/agents/__init__.py` | 导出 `create_quality_gate` |
-| `tradingagents/graph/setup.py` | 新增 "Quality Gate" 节点，接线：最后一个 analyst Msg Clear → Quality Gate → Bull Researcher |
+| `alphamind/agents/utils/agent_states.py` | `AgentState` 新增 `data_quality_summary` 字段 |
+| `alphamind/agents/__init__.py` | 导出 `create_quality_gate` |
+| `alphamind/graph/setup.py` | 新增 "Quality Gate" 节点，接线：最后一个 analyst Msg Clear → Quality Gate → Bull Researcher |
 | 7 个 analyst 文件 | 每个 prompt 末尾新增 📋 必采清单（market 5 项 / social 5 项 / news 5 项 / fundamentals 7 项 / policy 5 项 / hot_money 6 项 / lockup 5 项） |
-| `tradingagents/agents/researchers/bull_researcher.py` | 读取 `data_quality_summary` + prompt 注入质量警告 |
-| `tradingagents/agents/researchers/bear_researcher.py` | 同上 |
+| `alphamind/agents/researchers/bull_researcher.py` | 读取 `data_quality_summary` + prompt 注入质量警告 |
+| `alphamind/agents/researchers/bear_researcher.py` | 同上 |
 
 ### P1：3 个数据缺口补齐
 
@@ -264,16 +264,16 @@ eastmoney 全系北向资金接口（含 akshare `stock_hsgt_hist_em`、datacent
 
 | 文件 | 改动 |
 |------|------|
-| `tradingagents/dataflows/interface.py` | 导入 3 个新方法 + 注册到 `TOOLS_CATEGORIES` 和 `VENDOR_METHODS` |
-| `tradingagents/agents/utils/signal_data_tools.py` | 新增 3 个 `@tool` 包装 |
-| `tradingagents/agents/utils/agent_utils.py` | re-export 3 个新工具 |
-| `tradingagents/agents/analysts/hot_money_tracker.py` | tools 列表加 `get_dragon_tiger_board` + `get_industry_comparison`；prompt 新增工具说明 |
-| `tradingagents/agents/analysts/lockup_watcher.py` | tools 列表加 `get_lockup_expiry`；prompt 新增工具说明 |
-| `tradingagents/agents/analysts/fundamentals_analyst.py` | tools 列表加 `get_industry_comparison`；prompt 新增工具说明 |
+| `alphamind/dataflows/interface.py` | 导入 3 个新方法 + 注册到 `TOOLS_CATEGORIES` 和 `VENDOR_METHODS` |
+| `alphamind/agents/utils/signal_data_tools.py` | 新增 3 个 `@tool` 包装 |
+| `alphamind/agents/utils/agent_utils.py` | re-export 3 个新工具 |
+| `alphamind/agents/analysts/hot_money_tracker.py` | tools 列表加 `get_dragon_tiger_board` + `get_industry_comparison`；prompt 新增工具说明 |
+| `alphamind/agents/analysts/lockup_watcher.py` | tools 列表加 `get_lockup_expiry`；prompt 新增工具说明 |
+| `alphamind/agents/analysts/fundamentals_analyst.py` | tools 列表加 `get_industry_comparison`；prompt 新增工具说明 |
 
 ### 关键 Bug 修复：ToolNode 工具缺失
 
-**`tradingagents/graph/trading_graph.py`**：`_create_tool_nodes()` 的 ToolNode 定义只包含基础工具（get_stock_data / get_news 等），缺少信号层工具（get_hot_stocks / get_northbound_flow / get_concept_blocks / get_fund_flow / get_profit_forecast / get_dragon_tiger_board / get_lockup_expiry / get_industry_comparison）。导致 analyst 的 `llm.bind_tools()` 引用的工具在 ToolNode 执行时找不到，任何信号工具调用都会运行时失败。
+**`alphamind/graph/trading_graph.py`**：`_create_tool_nodes()` 的 ToolNode 定义只包含基础工具（get_stock_data / get_news 等），缺少信号层工具（get_hot_stocks / get_northbound_flow / get_concept_blocks / get_fund_flow / get_profit_forecast / get_dragon_tiger_board / get_lockup_expiry / get_industry_comparison）。导致 analyst 的 `llm.bind_tools()` 引用的工具在 ToolNode 执行时找不到，任何信号工具调用都会运行时失败。
 
 修复：为 fundamentals / hot_money / lockup 三个 ToolNode 补全所有信号工具的导入和注册。
 
@@ -303,9 +303,9 @@ eastmoney 全系北向资金接口（含 akshare `stock_hsgt_hist_em`、datacent
 
 | 文件 | 改动类型 | 说明 |
 |------|---------|------|
-| `tradingagents/llm_clients/factory.py` | 修改 | `_OPENAI_COMPATIBLE` tuple 增加 `"minimax"` |
-| `tradingagents/llm_clients/openai_client.py` | 修改 | `_PROVIDER_CONFIG` 增加 MiniMax base_url + env var |
-| `tradingagents/llm_clients/model_catalog.py` | 修改 | 新增 `"minimax"` 模型目录（M2.7/M2.5 + highspeed） |
+| `alphamind/llm_clients/factory.py` | 修改 | `_OPENAI_COMPATIBLE` tuple 增加 `"minimax"` |
+| `alphamind/llm_clients/openai_client.py` | 修改 | `_PROVIDER_CONFIG` 增加 MiniMax base_url + env var |
+| `alphamind/llm_clients/model_catalog.py` | 修改 | 新增 `"minimax"` 模型目录（M2.7/M2.5 + highspeed） |
 | `README.md` | 修改 | 重写 LLM 配置章节：7 供应商 + 3 套示例 |
 | `examples/run_cases.py` | 修改 | 默认改为 MiniMax-M2.7 / M2.7-highspeed |
 
@@ -339,9 +339,9 @@ eastmoney 全系北向资金接口（含 akshare `stock_hsgt_hist_em`、datacent
 | `web/app.py` | Streamlit 主入口：暗色 CSS 主题、5 态状态机 |
 | `web/runner.py` | 后台线程运行分析、流式检测 12 阶段完成 |
 | `web/progress.py` | 线程安全 ProgressTracker，12 阶段定义 |
-| `web/history.py` | 扫描 `~/.tradingagents/logs/` 历史 JSON |
+| `web/history.py` | 扫描 `~/.alphamind/logs/` 历史 JSON |
 | `web/pdf_export.py` | fpdf2 PDF 报告生成（CJK 字体自检测） |
-| `web/launch.py` | CLI 启动器（`tradingagents-web` 命令） |
+| `web/launch.py` | CLI 启动器（`alphamind-web` 命令） |
 | `web/components/sidebar.py` | 侧边栏：Logo + 股票输入 + 历史列表 |
 | `web/components/progress_panel.py` | 实时进度面板 + 彩色状态徽章 |
 | `web/components/report_viewer.py` | 信号卡片 + 7 报告 + 辩论 Tabs + PDF 下载 |
@@ -353,13 +353,13 @@ eastmoney 全系北向资金接口（含 akshare `stock_hsgt_hist_em`、datacent
 
 | 文件 | 说明 |
 |------|------|
-| `pyproject.toml` | 新增 streamlit/fpdf2/python-dotenv 依赖 + tradingagents-web 脚本 |
+| `pyproject.toml` | 新增 streamlit/fpdf2/python-dotenv 依赖 + alphamind-web 脚本 |
 | `README.md` | 新增 Web UI 章节 + 项目结构更新 |
 | `assets/web-ui-welcome.png` | 欢迎页截图 |
 
 ### 设计决策
 
-10. **Streamlit 而非 Gradio/自研前端**：Python 生态内闭环，无需 Node.js/npm；分析任务 15 分钟长跑，Streamlit 的 session_state + rerun 轮询模式天然适配；新手友好 `pip install -e . && tradingagents-web` 即用。
+10. **Streamlit 而非 Gradio/自研前端**：Python 生态内闭环，无需 Node.js/npm；分析任务 15 分钟长跑，Streamlit 的 session_state + rerun 轮询模式天然适配；新手友好 `pip install -e . && alphamind-web` 即用。
 
 ---
 
@@ -367,36 +367,36 @@ eastmoney 全系北向资金接口（含 akshare `stock_hsgt_hist_em`、datacent
 
 Week 1-7 共 **47 个文件**受影响（含 22 原有修改 + 22 新增 + 3 配置）：
 
-**tradingagents/ 核心改动（22 原有 + 9 新增）：**
-- `tradingagents/dataflows/a_stock.py` (新增)
-- `tradingagents/dataflows/interface.py`
-- `tradingagents/default_config.py`
-- `tradingagents/agents/quality_gate.py` (新增 — Week 5.5)
-- `tradingagents/agents/utils/agent_utils.py`
-- `tradingagents/agents/utils/signal_data_tools.py` (新增)
-- `tradingagents/agents/utils/agent_states.py`
-- `tradingagents/agents/__init__.py`
-- `tradingagents/agents/analysts/market_analyst.py`
-- `tradingagents/agents/analysts/fundamentals_analyst.py`
-- `tradingagents/agents/analysts/news_analyst.py`
-- `tradingagents/agents/analysts/social_media_analyst.py`
-- `tradingagents/agents/analysts/policy_analyst.py` (新增)
-- `tradingagents/agents/analysts/hot_money_tracker.py` (新增)
-- `tradingagents/agents/analysts/lockup_watcher.py` (新增)
-- `tradingagents/agents/conditional_logic.py`
-- `tradingagents/graph/trading_graph.py`
-- `tradingagents/graph/setup.py`
-- `tradingagents/agents/researchers/bull_researcher.py`
-- `tradingagents/agents/researchers/bear_researcher.py`
-- `tradingagents/agents/risk_mgmt/aggressive_debator.py`
-- `tradingagents/agents/risk_mgmt/conservative_debator.py`
-- `tradingagents/agents/risk_mgmt/neutral_debator.py`
-- `tradingagents/agents/managers/portfolio_manager.py`
-- `tradingagents/agents/managers/research_manager.py`
-- `tradingagents/agents/trader/trader.py`
-- `tradingagents/llm_clients/factory.py` (Week 6)
-- `tradingagents/llm_clients/openai_client.py` (Week 6)
-- `tradingagents/llm_clients/model_catalog.py` (Week 6)
+**alphamind/ 核心改动（22 原有 + 9 新增）：**
+- `alphamind/dataflows/a_stock.py` (新增)
+- `alphamind/dataflows/interface.py`
+- `alphamind/default_config.py`
+- `alphamind/agents/quality_gate.py` (新增 — Week 5.5)
+- `alphamind/agents/utils/agent_utils.py`
+- `alphamind/agents/utils/signal_data_tools.py` (新增)
+- `alphamind/agents/utils/agent_states.py`
+- `alphamind/agents/__init__.py`
+- `alphamind/agents/analysts/market_analyst.py`
+- `alphamind/agents/analysts/fundamentals_analyst.py`
+- `alphamind/agents/analysts/news_analyst.py`
+- `alphamind/agents/analysts/social_media_analyst.py`
+- `alphamind/agents/analysts/policy_analyst.py` (新增)
+- `alphamind/agents/analysts/hot_money_tracker.py` (新增)
+- `alphamind/agents/analysts/lockup_watcher.py` (新增)
+- `alphamind/agents/conditional_logic.py`
+- `alphamind/graph/trading_graph.py`
+- `alphamind/graph/setup.py`
+- `alphamind/agents/researchers/bull_researcher.py`
+- `alphamind/agents/researchers/bear_researcher.py`
+- `alphamind/agents/risk_mgmt/aggressive_debator.py`
+- `alphamind/agents/risk_mgmt/conservative_debator.py`
+- `alphamind/agents/risk_mgmt/neutral_debator.py`
+- `alphamind/agents/managers/portfolio_manager.py`
+- `alphamind/agents/managers/research_manager.py`
+- `alphamind/agents/trader/trader.py`
+- `alphamind/llm_clients/factory.py` (Week 6)
+- `alphamind/llm_clients/openai_client.py` (Week 6)
+- `alphamind/llm_clients/model_catalog.py` (Week 6)
 
 **Web UI（12 新增 — Week 7）：**
 - `web/app.py`, `web/runner.py`, `web/progress.py`, `web/history.py`

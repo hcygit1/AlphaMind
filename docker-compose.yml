@@ -1,10 +1,10 @@
 services:
-  tradingagents:
+  alphamind:
     build: .
     env_file:
       - .env
     volumes:
-      - tradingagents_data:/home/appuser/.tradingagents
+      - alphamind_data:/home/appuser/.alphamind
     tty: true
     stdin_open: true
 
@@ -15,14 +15,14 @@ services:
     profiles:
       - ollama
 
-  tradingagents-ollama:
+  alphamind-ollama:
     build: .
     env_file:
       - .env
     environment:
       - LLM_PROVIDER=ollama
     volumes:
-      - tradingagents_data:/home/appuser/.tradingagents
+      - alphamind_data:/home/appuser/.alphamind
     depends_on:
       - ollama
     tty: true
@@ -31,5 +31,5 @@ services:
       - ollama
 
 volumes:
-  tradingagents_data:
+  alphamind_data:
   ollama_data:

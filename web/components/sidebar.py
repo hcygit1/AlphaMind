@@ -6,7 +6,7 @@ from datetime import date
 
 import streamlit as st
 
-from tradingagents.llm_clients.model_catalog import MODEL_OPTIONS
+from alphamind.llm_clients.model_catalog import MODEL_OPTIONS
 from web.history import get_history
 
 # Provider display names in recommended order
@@ -32,7 +32,7 @@ def _resolve_user_input(raw: str) -> tuple[str, str | None]:
     Accepts 6-digit codes or Chinese stock names (e.g. '宝光股份').
     Returns (code, None) on success or ("", error_msg) on failure.
     """
-    from tradingagents.dataflows.a_stock import resolve_ticker
+    from alphamind.dataflows.a_stock import resolve_ticker
 
     try:
         code = resolve_ticker(raw)

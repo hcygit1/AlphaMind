@@ -9,7 +9,7 @@ from typing import Any
 
 
 def _results_dir() -> Path:
-    return Path.home() / ".tradingagents" / "logs"
+    return Path.home() / ".alphamind" / "logs"
 
 
 def get_history() -> list[dict[str, str]]:

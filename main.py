@@ -1,5 +1,5 @@
-from tradingagents.graph.trading_graph import TradingAgentsGraph
-from tradingagents.default_config import DEFAULT_CONFIG
+from alphamind.graph.trading_graph import AlphaMindGraph
+from alphamind.default_config import DEFAULT_CONFIG
 
 from dotenv import load_dotenv
 
@@ -21,7 +21,7 @@ config["data_vendors"] = {
 }
 
 # Initialize with custom config
-ta = TradingAgentsGraph(debug=True, config=config)
+ta = AlphaMindGraph(debug=True, config=config)
 
 # forward propagate
 _, decision = ta.propagate("NVDA", "2024-05-10")

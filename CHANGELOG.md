@@ -47,7 +47,7 @@ Breaking changes within the 0.x line are called out explicitly.
 
 ### Changed
 
-- `tradingagents/dataflows/a_stock.py` 全面重构数据获取层：
+- `alphamind/dataflows/a_stock.py` 全面重构数据获取层：
   - `get_stock_data()` → 新浪 JSON K线 API + push2.eastmoney 实时行情
   - `get_stock_info()` → push2.eastmoney 个股基本信息
   - `get_stock_news()` → 东财 np-weblist 滚动新闻（已有，无变化）
@@ -79,11 +79,11 @@ Breaking changes within the 0.x line are called out explicitly.
 - **LangGraph checkpoint resume** — opt-in via `--checkpoint`. State is saved
   after each node so crashed or interrupted runs resume from the last
   successful step. Per-ticker SQLite databases under
-  `~/.tradingagents/cache/checkpoints/`. `--clear-checkpoints` resets them. (#594)
+  `~/.alphamind/cache/checkpoints/`. `--clear-checkpoints` resets them. (#594)
 - **Persistent decision log** replacing the per-agent BM25 memory. Decisions
   are stored automatically at the end of `propagate()`; the next same-ticker
   run resolves prior pending entries with realised return, alpha vs SPY, and
-  a one-paragraph reflection. Override path with `TRADINGAGENTS_MEMORY_LOG_PATH`.
+  a one-paragraph reflection. Override path with `ALPHAMIND_MEMORY_LOG_PATH`.
   Optional `memory_log_max_entries` config caps resolved entries; pending
   entries are never pruned. (#578, #563, #564, #579)
 - **DeepSeek, Qwen (Alibaba DashScope), GLM (Zhipu), and Azure OpenAI**
@@ -108,7 +108,7 @@ Breaking changes within the 0.x line are called out explicitly.
   overriding `backend_url`. The CLI flow is unaffected.
 - All file I/O passes explicit `encoding="utf-8"` so Windows users no longer
   hit `UnicodeEncodeError` with the cp1252 default. (#543, #550, #576)
-- Cache and log directories moved to `~/.tradingagents/` to resolve Docker
+- Cache and log directories moved to `~/.alphamind/` to resolve Docker
   permission issues. (#519)
 - `SignalProcessor` reads the rating from the Portfolio Manager's rendered
   markdown via a deterministic heuristic — no extra LLM call.

@@ -27,9 +27,9 @@
 原版 4 个（市场/情绪/新闻/基本面）+ A 股特化 3 个（政策分析师/游资追踪/解禁监控）
 
 ### 关键路径
-- `tradingagents/dataflows/a_stock.py` — A 股数据 vendor，所有数据获取入口
-- `tradingagents/dataflows/utils.py` — `safe_ticker_component` 路径安全校验 + 中文 ticker 自动解析
-- `tradingagents/agents/` — 7 个 Analyst + Bull/Bear 辩论逻辑
+- `alphamind/dataflows/a_stock.py` — A 股数据 vendor，所有数据获取入口
+- `alphamind/dataflows/utils.py` — `safe_ticker_component` 路径安全校验 + 中文 ticker 自动解析
+- `alphamind/agents/` — 7 个 Analyst + Bull/Bear 辩论逻辑
 - `web/` — Streamlit Web UI
 - `cli/` — CLI 入口
 
@@ -59,7 +59,7 @@ deepseek-v4-flash 等模型在 tool call 时可能返回中文股票名而非 6 
 ## 开发规范
 - 改动前先跑 `python -m pytest tests/ -v` 确保不破坏现有测试
 - `safe_ticker_component` 是安全边界，任何绕过路径校验的改动必须慎重评估
-- 数据层新增接口遵循 `tradingagents/dataflows/interface.py` 的 vendor 路由模式
+- 数据层新增接口遵循 `alphamind/dataflows/interface.py` 的 vendor 路由模式
 - Web UI 改动在 `web/` 目录，用 `streamlit run web/launch.py` 本地测试
 
 ## 相关项目

@@ -1,4 +1,4 @@
-"""Background thread runner for TradingAgentsGraph pipeline."""
+"""Background thread runner for AlphaMindGraph pipeline."""
 
 from __future__ import annotations
 
@@ -70,11 +70,11 @@ def _infer_active_stage(tracker: ProgressTracker) -> None:
 def _run(ticker: str, trade_date: str, config: dict, tracker: ProgressTracker) -> None:
     """Execute the full pipeline in the current thread."""
     from cli.stats_handler import StatsCallbackHandler
-    from tradingagents.graph.trading_graph import TradingAgentsGraph
+    from alphamind.graph.trading_graph import AlphaMindGraph
 
     stats = StatsCallbackHandler()
 
-    graph = TradingAgentsGraph(
+    graph = AlphaMindGraph(
         debug=True,
         config=config,
         callbacks=[stats],

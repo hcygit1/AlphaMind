@@ -51,11 +51,9 @@ google = ["langchain-google-genai>=4.0.0"]
 [project.scripts]
 alphamind = "cli.main:app"
 alphamind-web = "web.launch:main"
-tradingagents = "cli.main:app"
-tradingagents-web = "web.launch:main"
 
 [tool.setuptools.packages.find]
-include = ["tradingagents*", "cli*", "web*"]
+include = ["alphamind*", "cli*", "web*"]
 
 [tool.setuptools.package-data]
 cli = ["static/*"]

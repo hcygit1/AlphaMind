@@ -192,7 +192,7 @@ ANTHROPIC_AUTH_TOKEN=your-kimi-token
 根据你选择的供应商修改 config：
 
 ```python
-from tradingagents.graph.trading_graph import TradingAgentsGraph
+from alphamind.graph.trading_graph import AlphaMindGraph
 
 # ── MiniMax 示例（推荐）─────────────────────────────
 config = {
@@ -219,7 +219,7 @@ config = {
 #     "output_language": "Chinese",
 # }
 
-ta = TradingAgentsGraph(debug=True, config=config)
+ta = AlphaMindGraph(debug=True, config=config)
 final_state, decision = ta.propagate("688017", "2026-05-12")
 print(decision)
 ```
@@ -289,7 +289,7 @@ streamlit run web/app.py
 
 ```
 AlphaMind/
-├── tradingagents/
+├── alphamind/
 │   ├── agents/
 │   │   ├── analysts/          # 7 个分析师
 │   │   │   ├── market_analyst.py
@@ -309,7 +309,7 @@ AlphaMind/
 │   │   ├── interface.py       # 数据接口抽象层
 │   │   └── ...
 │   └── graph/
-│       ├── trading_graph.py   # 主入口：TradingAgentsGraph
+│       ├── trading_graph.py   # 主入口：AlphaMindGraph
 │       ├── setup.py           # LangGraph 拓扑定义
 │       ├── propagation.py     # 状态初始化与传播
 │       ├── reflection.py      # 交易反思（CSI 300 基准）
