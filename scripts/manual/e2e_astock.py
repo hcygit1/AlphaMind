@@ -1,4 +1,4 @@
-"""End-to-end test: run TradingAgents pipeline on A-stock 688017 via Kimi 2.6."""
+"""Manual E2E diagnostic: run AlphaMind on A-stock 688017 via Kimi 2.6."""
 
 from alphamind.graph.trading_graph import AlphaMindGraph
 from alphamind.default_config import DEFAULT_CONFIG

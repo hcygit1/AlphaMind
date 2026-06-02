@@ -315,9 +315,9 @@ AlphaMind/
 │       ├── reflection.py      # 交易反思（CSI 300 基准）
 │       └── conditional_logic.py
 ├── web/
-│   ├── app.py                 # Streamlit 主入口
-│   ├── runner.py              # 后台线程运行分析
-│   ├── progress.py            # 线程安全进度追踪
+│   ├── app.py                 # 当前 Streamlit 主入口（后续可替换为 React/Vue）
+│   ├── runner.py              # Streamlit 后台线程运行分析
+│   ├── progress.py            # Streamlit 进度追踪状态
 │   ├── history.py             # 历史记录扫描
 │   ├── pdf_export.py          # PDF 报告生成
 │   ├── launch.py              # CLI 启动器
@@ -325,7 +325,12 @@ AlphaMind/
 │       ├── sidebar.py         # 侧边栏（输入 + 历史）
 │       ├── progress_panel.py  # 实时进度面板
 │       └── report_viewer.py   # 报告展示
-├── test_astock.py             # E2E 集成测试
+├── scripts/
+│   ├── smoke_structured_output.py
+│   └── manual/                # 手工诊断脚本
+├── docs/
+│   ├── frontend-migration.md  # 前端替换规划
+│   └── legacy/                # 旧 fork 开发记录归档
 ├── CHANGES_FROM_UPSTREAM.md   # 与上游的完整改动记录
 ├── NOTICE                     # Apache 2.0 归属声明
 ├── LICENSE                    # Apache 2.0 许可证

@@ -229,7 +229,7 @@ else:
                 font-weight: 900;
                 margin-bottom: 0.5rem;
             ">
-                <span style="color: #ff5a1f;">Trading</span><span style="color: #f5f1eb;">Agents</span><span style="color: #f5f1eb;">-</span><span style="color: #ff5a1f;">Astock</span>
+                <span style="color: #ff5a1f;">Alpha</span><span style="color: #f5f1eb;">Mind</span>
             </div>
             <div style="color: #888; font-size: 1.1rem; max-width: 500px; line-height: 1.6;">
                 A股多Agent投研分析系统<br>

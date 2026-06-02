@@ -11,7 +11,7 @@
 | 文件 | 说明 |
 |------|------|
 | `alphamind/dataflows/a_stock.py` | A 股数据 vendor，~400 行，9 个接口方法 |
-| `test_astock.py` | E2E 集成测试脚本 |
+| `scripts/manual/e2e_astock.py` | E2E 手工诊断脚本 |
 | `.env` | 环境变量模板（已加入 .gitignore） |
 
 ### 修改文件
@@ -215,7 +215,7 @@
 
 | 文件 | 说明 |
 |------|------|
-| `test_data_quality.py` | 14 接口数据质量回归测试脚本（000858 五粮液） |
+| `scripts/manual/data_quality_check.py` | 14 接口数据质量手工诊断脚本 |
 
 ### 根因记录
 

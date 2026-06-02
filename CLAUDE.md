@@ -30,7 +30,7 @@
 - `alphamind/dataflows/a_stock.py` — A 股数据 vendor，所有数据获取入口
 - `alphamind/dataflows/utils.py` — `safe_ticker_component` 路径安全校验 + 中文 ticker 自动解析
 - `alphamind/agents/` — 7 个 Analyst + Bull/Bear 辩论逻辑
-- `web/` — Streamlit Web UI
+- `web/` — 当前 Streamlit Web UI；后续 React/Vue 替换时应只作为临时外壳
 - `cli/` — CLI 入口
 
 ### 中文股票名解析链路
@@ -53,14 +53,15 @@ deepseek-v4-flash 等模型在 tool call 时可能返回中文股票名而非 6 
 ### 待处理 PR
 - PR #18（hejingchi）：start_date 功能 + 主题切换 + Windows 字体。不建议直接 merge（与 v0.2.6 冲突），start_date 功能值得后续自行实现。
 
-## Issue 归档
-所有 GitHub Issue 的详细记录在 `issues/` 文件夹中，包含问题描述、根因分析、修复方案和当前状态。
+## 历史归档
+旧 fork 的开发日志和 Issue 记录已归档到 `docs/legacy/`，仅作为历史参考。
 
 ## 开发规范
 - 改动前先跑 `python -m pytest tests/ -v` 确保不破坏现有测试
 - `safe_ticker_component` 是安全边界，任何绕过路径校验的改动必须慎重评估
 - 数据层新增接口遵循 `alphamind/dataflows/interface.py` 的 vendor 路由模式
-- Web UI 改动在 `web/` 目录，用 `streamlit run web/launch.py` 本地测试
+- Web UI 改动在 `web/` 目录，用 `streamlit run web/app.py` 本地测试
+- 面向 React/Vue 的新前端不要直接依赖 Streamlit 状态；优先抽取服务层/API，参考 `docs/frontend-migration.md`
 
 ## 相关项目
 - 上游 [TauricResearch/TradingAgents](https://github.com/TauricResearch/TradingAgents) — 原版框架

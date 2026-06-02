@@ -1,4 +1,4 @@
-"""Data quality gate test: run all 14 a_stock.py endpoints on 000858 五粮液.
+"""Manual data quality diagnostic for A-stock data endpoints.
 
 Checks: return type, non-empty, data freshness, key fields present.
 """
@@ -55,7 +55,7 @@ TESTS = [
 ]
 
 print(f"{'='*70}")
-print(f"数据质量实测 | {TICKER} 五粮液 | {TRADE_DATE}")
+print(f"数据质量实测 | {TICKER} | {TRADE_DATE}")
 print(f"{'='*70}\n")
 
 results = []
