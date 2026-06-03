@@ -43,6 +43,7 @@ Each agent must read this file, `findings.md`, `progress.md`, the implementation
 - [x] Verify `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_db_repositories.py -v`
 - [x] Verify `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py -v`
 - [x] Commit `feat: 添加SQLite持久化层` (`4192a37`)
+- [x] Address Task 2 quality review: enable SQLite foreign keys, add stable repository ordering, and expand repository regression coverage
 - **Status:** complete
 
 ### Phase 3: Report And Research Services
@@ -103,6 +104,7 @@ Each agent must read this file, `findings.md`, `progress.md`, the implementation
 | Expected RED failure: `ModuleNotFoundError: No module named 'fastapi'` | 1 | Added backend dependencies and installed them into the shared venv with `uv pip install --python /Users/hcy/Desktop/file/AlphaMind/.venv/bin/python ...` |
 | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pip` unavailable because the venv has no `pip` module | 1 | Used `/Users/hcy/.local/bin/uv pip install --python /Users/hcy/Desktop/file/AlphaMind/.venv/bin/python ...` |
 | Expected RED failure: `ModuleNotFoundError: No module named 'server.db'` | 1 | Added Task 2 SQLite connection, schema, repositories, and shared Pydantic schemas |
+| Expected RED failures: SQLite foreign key not enforced and same-second repository ordering unstable | 1 | Enabled `PRAGMA foreign_keys = ON` per connection and added deterministic order tie-breakers for reports, active tasks, and agent messages |
 
 ## Handoff Checklist
 

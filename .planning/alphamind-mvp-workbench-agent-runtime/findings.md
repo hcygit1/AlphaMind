@@ -40,6 +40,8 @@
 |-------|------------|
 | `pytest` command not found in isolated worktree | Use `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest ...` from the worktree |
 | Shared venv has no `pip` module | Use `/Users/hcy/.local/bin/uv pip install --python /Users/hcy/Desktop/file/AlphaMind/.venv/bin/python ...` for dependency installation |
+| SQLite foreign key checks are connection-local and disabled by default | `server.db.connection.connect()` must execute `PRAGMA foreign_keys = ON` on every new connection |
+| Repository rows can share second-level `created_at` timestamps | List queries need explicit tie-breakers: reports by `id DESC`, active tasks by `id ASC`, and agent messages by `rowid ASC` to preserve insertion order |
 
 ## Resources
 

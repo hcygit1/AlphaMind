@@ -51,6 +51,10 @@
 | Task 2 RED test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_db_repositories.py -v` | Fails because `server.db` is missing | Failed with `ModuleNotFoundError: No module named 'server.db'` | pass |
 | Task 2 target test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_db_repositories.py -v` | Repository test passes | 1 passed in 0.05s | pass |
 | Task 2 regression | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py -v` | App factory and repository tests pass | 2 passed, 1 warning in 0.11s | pass |
+| Task 2 quality RED test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_db_repositories.py -v` | New tests expose review findings | 3 failed, 4 passed: foreign key not enforced; report and active-task same-second ordering unstable | pass |
+| Task 2 quality target test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_db_repositories.py -v` | Repository quality regressions pass | 7 passed in 0.05s | pass |
+| Task 2 quality required test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_db_repositories.py -v` | Required repository test command passes | 7 passed in 0.05s | pass |
+| Task 2 quality required regression | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py -v` | Required app factory + repository test command passes | 8 passed, 1 warning in 0.13s | pass |
 
 ## Error Log
 
@@ -60,6 +64,7 @@
 | 2026-06-03 17:05 CST | Expected RED failure: `ModuleNotFoundError: No module named 'fastapi'` | 1 | Added Task 1 dependencies and server skeleton, then reran target test successfully |
 | 2026-06-03 17:06 CST | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pip install ...` failed because `pip` is not installed in the shared venv | 1 | Installed Task 1 dependencies with `/Users/hcy/.local/bin/uv pip install --python /Users/hcy/Desktop/file/AlphaMind/.venv/bin/python ...` |
 | 2026-06-03 17:13 CST | Expected RED failure: `ModuleNotFoundError: No module named 'server.db'` | 1 | Added Task 2 SQLite connection, schema, repositories, models, then reran target test successfully |
+| 2026-06-03 17:38 CST | Expected RED failures: SQLite foreign key not enforced and same-second repository ordering unstable | 1 | Enabled SQLite foreign keys per connection and added stable list query tie-breakers |
 
 ### Phase 1: Backend Dependencies And Server Skeleton
 
@@ -113,6 +118,32 @@
   - `4192a37 feat: 添加SQLite持久化层`
 - Next recommended action:
   - Start Phase 3 / implementation plan Task 3 and Task 4: report indexing/detail service and research task service.
+
+### Task 2 Quality Review Fix
+
+- **Status:** complete
+- **Started:** 2026-06-03 17:32 CST
+- **Completed:** 2026-06-03 17:38 CST
+- Actions taken:
+  - Added regression coverage for SQLite foreign key enforcement, agent message JSON round trip and ordering, page context overwrite behavior, `update_research_task` allowlist filtering, and same-second stable ordering for reports and active tasks.
+  - Confirmed RED with 3 expected failures: missing foreign key enforcement, unstable report tie ordering, and unstable active task tie ordering.
+  - Enabled `PRAGMA foreign_keys = ON` in `server.db.connection.connect()`.
+  - Added deterministic ordering tie-breakers for `list_reports`, `list_active_research_tasks`, and `list_agent_messages`.
+  - Confirmed the expanded repository test file passes.
+- Files modified:
+  - `server/db/connection.py`
+  - `server/db/repositories.py`
+  - `tests/server/test_db_repositories.py`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/task_plan.md`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/findings.md`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/progress.md`
+- Test results:
+  - RED: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_db_repositories.py -v` -> 3 failed, 4 passed.
+  - GREEN: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_db_repositories.py -v` -> 7 passed in 0.05s.
+  - Required verification: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_db_repositories.py -v` -> 7 passed in 0.05s.
+  - Required regression: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py -v` -> 8 passed, 1 warning in 0.13s.
+- Next recommended action:
+  - Commit the Task 2 quality fix.
 
 ## 5-Question Reboot Check
 

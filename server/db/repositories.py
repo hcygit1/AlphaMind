@@ -103,7 +103,7 @@ def upsert_report(
 def list_reports(db_path: Path | str) -> list[dict[str, Any]]:
     with connect(db_path) as conn:
         rows = conn.execute(
-            "SELECT * FROM research_reports ORDER BY created_at DESC, trade_date DESC"
+            "SELECT * FROM research_reports ORDER BY created_at DESC, trade_date DESC, id DESC"
         ).fetchall()
     return [_dict(row) for row in rows]
 
@@ -114,7 +114,7 @@ def list_active_research_tasks(db_path: Path | str) -> list[dict[str, Any]]:
             """
             SELECT * FROM research_tasks
             WHERE user_id = ? AND workspace_id = ? AND status IN ('pending', 'running')
-            ORDER BY created_at ASC
+            ORDER BY created_at ASC, id ASC
             """,
             (DEFAULT_USER_ID, DEFAULT_WORKSPACE_ID),
         ).fetchall()
@@ -166,7 +166,7 @@ def add_agent_message(
 def list_agent_messages(db_path: Path | str, session_id: str) -> list[dict[str, Any]]:
     with connect(db_path) as conn:
         rows = conn.execute(
-            "SELECT * FROM agent_messages WHERE session_id = ? ORDER BY created_at ASC",
+            "SELECT * FROM agent_messages WHERE session_id = ? ORDER BY created_at ASC, rowid ASC",
             (session_id,),
         ).fetchall()
     messages = [_dict(row) for row in rows]
