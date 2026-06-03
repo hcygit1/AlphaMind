@@ -20,6 +20,10 @@
 - `requirements.txt` currently contains only `.`, while Python dependencies are managed in `pyproject.toml`.
 - Existing report files are stored under `results_dir/{ticker}/AlphaMindStrategy_logs/full_states_log_{trade_date}.json`.
 - Existing Streamlit code in `web/runner.py` is a reference only; new FastAPI service should not depend on Streamlit session state.
+- Implementation is running in isolated worktree `.worktrees/mvp-workbench-agent-runtime` on branch `feat/mvp-workbench-agent-runtime`.
+- The isolated worktree does not have `pytest` on PATH. Use `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest ...` for Python test commands unless a local worktree environment is created later.
+- Task 1 installed `fastapi==0.136.3`, upgraded `httpx` to `0.28.1`, and added uvicorn extras dependencies into the shared venv via `uv pip install --python /Users/hcy/Desktop/file/AlphaMind/.venv/bin/python ...`.
+- FastAPI TestClient currently emits a `StarletteDeprecationWarning` about `httpx` during `tests/server/test_app_factory.py`; the test passes.
 
 ## Technical Decisions
 
@@ -34,7 +38,8 @@
 
 | Issue | Resolution |
 |-------|------------|
-| None yet | No implementation work has started |
+| `pytest` command not found in isolated worktree | Use `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest ...` from the worktree |
+| Shared venv has no `pip` module | Use `/Users/hcy/.local/bin/uv pip install --python /Users/hcy/Desktop/file/AlphaMind/.venv/bin/python ...` for dependency installation |
 
 ## Resources
 
