@@ -160,6 +160,9 @@ venv.bak/
 # Local legacy sponsor asset
 assets/wechat-sponsor.jpg
 
+# Local git worktrees
+.worktrees/
+
 # Spyder project settings
 .spyderproject
 .spyproject
