@@ -1,9 +1,11 @@
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from server.db.connection import init_db
 from server.db.repositories import create_research_task, get_research_task, upsert_default_identity
+import server.services.research_service as research_service_module
 from server.services.research_service import ResearchService
 
 
@@ -48,3 +50,56 @@ def test_research_service_blocks_when_repository_has_active_task(tmp_path: Path)
 
     with pytest.raises(RuntimeError, match="同时只能运行一个"):
         service.create_task("300750", "2026-06-03")
+
+
+def test_research_service_create_task_uses_atomic_repository_gate(tmp_path: Path, monkeypatch):
+    db_path = tmp_path / "test.sqlite3"
+    init_db(db_path)
+    upsert_default_identity(db_path)
+    calls = []
+
+    def fake_create_if_none_active(db_path_arg, ticker: str, trade_date: str):
+        calls.append((Path(db_path_arg), ticker, trade_date))
+        return {"id": "task_atomic", "ticker": ticker, "trade_date": trade_date, "status": "pending"}
+
+    monkeypatch.setattr(
+        research_service_module,
+        "create_research_task_if_none_active",
+        fake_create_if_none_active,
+    )
+    service = ResearchService(db_path=db_path, runner=FakeRunner())
+
+    task = service.create_task("300750", "2026-06-03")
+
+    assert task["id"] == "task_atomic"
+    assert calls == [(db_path, "300750", "2026-06-03")]
+
+
+def test_default_runner_summary_uses_report_summary_extractor(tmp_path: Path, monkeypatch):
+    final_state = {
+        "final_trade_decision": (
+            "**Rating**: Hold\n\n"
+            "**Executive Summary**: 复用报告摘要。\n\n"
+            "后续正文不应成为索引摘要。"
+        )
+    }
+
+    class FakeGraph:
+        ticker = "300750"
+
+        def __init__(self, debug: bool, config: dict):
+            self.config = config
+
+        def propagate(self, ticker: str, trade_date: str):
+            return final_state, "Hold"
+
+    monkeypatch.setitem(
+        __import__("sys").modules,
+        "alphamind.graph.trading_graph",
+        SimpleNamespace(AlphaMindGraph=FakeGraph),
+    )
+    monkeypatch.setitem(research_service_module.DEFAULT_CONFIG, "results_dir", str(tmp_path))
+
+    result = research_service_module.default_runner("300750", "2026-06-03", lambda **kwargs: None)
+
+    assert result["summary"] == "复用报告摘要。"

@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from alphamind.agents.utils.rating import parse_rating
 from server.db.repositories import get_report, upsert_report
 
 
@@ -33,10 +34,7 @@ def load_state(path: str | Path) -> dict[str, Any]:
 def extract_signal(state: dict[str, Any]) -> str:
     text = str(state.get("final_trade_decision", ""))
     cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
-    for rating in ("Buy", "Overweight", "Hold", "Underweight", "Sell"):
-        if re.search(rf"\b{rating}\b", cleaned, flags=re.IGNORECASE):
-            return rating
-    return "N/A"
+    return parse_rating(cleaned)
 
 
 def extract_summary(state: dict[str, Any]) -> str:

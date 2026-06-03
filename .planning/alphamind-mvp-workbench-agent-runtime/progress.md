@@ -24,7 +24,7 @@
 
 ## Current Handoff
 
-- Last completed phase: Phase 3.
+- Last completed phase: Phase 3 quality review fix.
 - Task 1 implementation commit: `0c15777 feat: 添加FastAPI服务骨架`.
 - Task 2 implementation commit: `4192a37 feat: 添加SQLite持久化层`.
 - Task 3 and Task 4 implementation commit: `3524a8e feat: 添加投研服务层`.
@@ -32,6 +32,7 @@
 - SQLite persistence layer is in place with schema initialization, default identity upsert, research task/report/session/message/page-context repositories, shared Pydantic schemas, and `list_active_research_tasks` returning pending/running tasks.
 - Report service is in place with legacy state JSON indexing, section extraction, signal extraction, summary extraction, and report detail assembly.
 - Research service is in place with task creation, synchronous/background execution helpers, fake-runner-testable orchestration, repository-backed active task gating, report creation, and in-memory SSE event buffering.
+- Phase 3 quality fixes are in place: report signal extraction reuses shared `parse_rating`, research task creation uses a repository-level `BEGIN IMMEDIATE` active-task gate, and `default_runner` summary reuses `extract_summary`.
 - Worktree path: `/Users/hcy/Desktop/file/AlphaMind/.worktrees/mvp-workbench-agent-runtime`
 - Branch: `feat/mvp-workbench-agent-runtime`
 - Next recommended action: start Phase 4 / implementation plan Task 5 in a separate worker, adding FastAPI routes on top of the completed service layer.
@@ -64,6 +65,10 @@
 | Task 4 RED test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_research_service.py -v` | Fails because `ResearchService` is missing | Failed with `ModuleNotFoundError: No module named 'server.services.research_service'` | pass |
 | Task 4 GREEN test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_research_service.py -v` | Research service tests pass | 2 passed in 0.03s | pass |
 | Phase 3 regression | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py tests/server/test_report_service.py tests/server/test_research_service.py -v` | App factory, repositories, report service, and research service tests pass | 12 passed, 1 warning in 0.15s | pass |
+| Phase 3 quality RED test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_report_service.py tests/server/test_research_service.py tests/server/test_db_repositories.py -v` | New tests expose review findings before implementation | 6 failed, 11 passed: signal extraction returned `Buy`/`N/A`, atomic helper was missing, service helper usage was missing, and default runner sliced the full decision | pass |
+| Phase 3 quality GREEN test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_report_service.py tests/server/test_research_service.py tests/server/test_db_repositories.py -v` | Report, research service, and repository quality fixes pass | 17 passed in 1.24s | pass |
+| Phase 3 quality required test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_report_service.py tests/server/test_research_service.py tests/server/test_db_repositories.py -v` | Required report/research/repository test command passes | 17 passed in 0.90s | pass |
+| Phase 3 quality required regression | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py tests/server/test_report_service.py tests/server/test_research_service.py -v` | Required app factory + repository + report + research test command passes | 18 passed, 1 warning in 0.72s | pass |
 
 ## Error Log
 
@@ -77,6 +82,7 @@
 | 2026-06-03 18:00 CST | Task 3 first RED attempt reported `ERROR: file or directory not found: tests/server/test_report_service.py` | 1 | Removed the test file accidentally added in the main checkout, re-applied it inside the isolated worktree, and reran RED successfully |
 | 2026-06-03 18:01 CST | Expected RED failure: `ModuleNotFoundError: No module named 'server.services'` | 1 | Added `server/services/__init__.py` and `server/services/report_service.py`, then reran target test successfully |
 | 2026-06-03 18:04 CST | Expected RED failure: `ModuleNotFoundError: No module named 'server.services.research_service'` | 1 | Added `server/services/research_service.py`, then reran target test successfully |
+| 2026-06-03 18:09 CST | Expected Phase 3 quality RED failures: `extract_signal` returned `Buy` for explicit `Sell`, no-rating fallback returned `N/A`, repository atomic helper was absent, service did not expose/use the helper, and `default_runner` summary included the full decision prefix | 1 | Reused shared `parse_rating`, added repository `create_research_task_if_none_active()` with `BEGIN IMMEDIATE`, updated `ResearchService.create_task()`, and reused `extract_summary()` in `default_runner` |
 
 ### Phase 1: Backend Dependencies And Server Skeleton
 
@@ -188,15 +194,48 @@
 - Next recommended action:
   - Start Phase 4 / implementation plan Task 5 in a separate worker, adding API routes that call the completed service layer.
 
+### Phase 3 Quality Review Fix
+
+- **Status:** complete
+- **Started:** 2026-06-03 18:09 CST
+- **Completed:** 2026-06-03 18:09 CST
+- Actions taken:
+  - Added report service regression tests for explicit rating-label precedence and no-rating fallback consistency with `parse_rating`.
+  - Added repository tests for atomic active-task creation: pending task blocks a new task, completed task does not.
+  - Added research service coverage that `create_task` calls the atomic repository helper.
+  - Added `default_runner` summary coverage with a fake `AlphaMindGraph` module to avoid real graph execution.
+  - Confirmed RED before production changes: 6 failed, 11 passed.
+  - Updated `extract_signal` to reuse `alphamind.agents.utils.rating.parse_rating`.
+  - Added `create_research_task_if_none_active` in `server.db.repositories` with `BEGIN IMMEDIATE`.
+  - Updated `ResearchService.create_task` to call the atomic repository helper and removed the now-unused service-level active-task check.
+  - Updated `default_runner` to reuse `extract_summary(final_state)`.
+- Files modified:
+  - `server/db/repositories.py`
+  - `server/services/report_service.py`
+  - `server/services/research_service.py`
+  - `tests/server/test_db_repositories.py`
+  - `tests/server/test_report_service.py`
+  - `tests/server/test_research_service.py`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/task_plan.md`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/findings.md`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/progress.md`
+- Test results:
+  - RED: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_report_service.py tests/server/test_research_service.py tests/server/test_db_repositories.py -v` -> 6 failed, 11 passed.
+  - GREEN: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_report_service.py tests/server/test_research_service.py tests/server/test_db_repositories.py -v` -> 17 passed in 1.24s.
+  - Required verification: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_report_service.py tests/server/test_research_service.py tests/server/test_db_repositories.py -v` -> 17 passed in 0.90s.
+  - Required regression: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py tests/server/test_report_service.py tests/server/test_research_service.py -v` -> 18 passed, 1 warning in 0.72s.
+- Next recommended action:
+  - Commit the Phase 3 quality fix.
+
 ## 5-Question Reboot Check
 
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 3 complete; ready for Phase 4 |
+| Where am I? | Phase 3 quality review fix complete; ready for Phase 4 |
 | Where am I going? | Phase 4: FastAPI routes |
 | What's the goal? | Build the Phase 1 AlphaMind MVP workbench and Agent Runtime foundation |
 | What have I learned? | See `findings.md` |
-| What have I done? | Created scoped planning-with-files tracking files, completed Task 1 backend service skeleton, completed Task 2 SQLite persistence layer, and completed Task 3/4 report and research service layer |
+| What have I done? | Created scoped planning-with-files tracking files, completed Task 1 backend service skeleton, completed Task 2 SQLite persistence layer, completed Task 3/4 report and research service layer, and fixed Phase 3 code-quality review findings |
 
 ---
 

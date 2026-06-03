@@ -9,12 +9,12 @@ from typing import Any, Callable
 
 from alphamind.default_config import DEFAULT_CONFIG
 from server.db.repositories import (
-    create_research_task,
+    create_research_task_if_none_active,
     get_research_task,
-    list_active_research_tasks,
     update_research_task,
     upsert_report,
 )
+from server.services.report_service import extract_summary
 
 
 ResearchRunner = Callable[[str, str, Callable[..., None]], dict[str, Any]]
@@ -35,7 +35,7 @@ def default_runner(ticker: str, trade_date: str, emit: Callable[..., None]) -> d
     return {
         "state_path": str(state_path),
         "signal": signal,
-        "summary": str(final_state.get("final_trade_decision", ""))[:180],
+        "summary": extract_summary(final_state),
     }
 
 
@@ -47,12 +47,11 @@ class ResearchService:
         self._lock = threading.Lock()
 
     def create_task(self, ticker: str, trade_date: str) -> dict[str, Any]:
-        running = [
-            task for task in self._active_tasks() if task.get("status") in {"pending", "running"}
-        ]
-        if running:
-            raise RuntimeError("同一默认用户同时只能运行一个深度投研任务")
-        task = create_research_task(self.db_path, ticker=ticker, trade_date=trade_date)
+        task = create_research_task_if_none_active(
+            self.db_path,
+            ticker=ticker,
+            trade_date=trade_date,
+        )
         self._emit(task["id"], status="pending", stage=None, message="任务已创建")
         return task
 
@@ -142,6 +141,3 @@ class ResearchService:
         }
         with self._lock:
             self._events[task_id].append(event)
-
-    def _active_tasks(self) -> list[dict[str, Any]]:
-        return list_active_research_tasks(self.db_path)

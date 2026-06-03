@@ -42,6 +42,9 @@
 | Shared venv has no `pip` module | Use `/Users/hcy/.local/bin/uv pip install --python /Users/hcy/Desktop/file/AlphaMind/.venv/bin/python ...` for dependency installation |
 | SQLite foreign key checks are connection-local and disabled by default | `server.db.connection.connect()` must execute `PRAGMA foreign_keys = ON` on every new connection |
 | Repository rows can share second-level `created_at` timestamps | List queries need explicit tie-breakers: reports by `id DESC`, active tasks by `id ASC`, and agent messages by `rowid ASC` to preserve insertion order |
+| Report signal extraction can conflict with final decision prose | `server.services.report_service.extract_signal()` must delegate to `alphamind.agents.utils.rating.parse_rating()` so explicit `Rating: X` labels win over earlier rating words in prose |
+| Service-level active task checks are not atomic | `ResearchService.create_task()` must call repository-level `create_research_task_if_none_active()`, which uses `BEGIN IMMEDIATE` to check pending/running tasks and insert in one SQLite transaction |
+| Runner-created report summaries must match indexed report summaries | `default_runner()` should reuse `extract_summary(final_state)` instead of slicing `final_trade_decision` directly |
 
 ## Resources
 

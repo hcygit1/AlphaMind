@@ -5,6 +5,7 @@ from server.db.connection import init_db
 from server.db.repositories import upsert_default_identity
 from server.services.report_service import (
     build_report_detail,
+    extract_signal,
     extract_report_sections,
     index_report_file,
 )
@@ -63,3 +64,23 @@ def test_extract_report_sections_maps_existing_state_keys():
     assert section_map["market"] == "市场"
     assert section_map["debate"] == "辩论"
     assert section_map["final_decision"] == "最终"
+
+
+def test_extract_signal_prefers_explicit_rating_label_over_earlier_prose():
+    signal = extract_signal(
+        {
+            "final_trade_decision": (
+                "Buy thesis was considered during debate.\n\n"
+                "**Rating**: Sell\n\n"
+                "**Executive Summary**: 下调风险敞口。"
+            )
+        }
+    )
+
+    assert signal == "Sell"
+
+
+def test_extract_signal_defaults_like_shared_rating_parser_when_no_rating_present():
+    signal = extract_signal({"final_trade_decision": "No clear directional signal at this time."})
+
+    assert signal == "Hold"

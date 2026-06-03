@@ -46,6 +46,36 @@ def create_research_task(db_path: Path | str, ticker: str, trade_date: str) -> d
     return _dict(row)
 
 
+def create_research_task_if_none_active(
+    db_path: Path | str,
+    ticker: str,
+    trade_date: str,
+) -> dict[str, Any]:
+    task_id = _uuid("task")
+    with connect(db_path) as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        active = conn.execute(
+            """
+            SELECT id FROM research_tasks
+            WHERE user_id = ? AND workspace_id = ? AND status IN ('pending', 'running')
+            LIMIT 1
+            """,
+            (DEFAULT_USER_ID, DEFAULT_WORKSPACE_ID),
+        ).fetchone()
+        if active:
+            raise RuntimeError("同一默认用户同时只能运行一个深度投研任务")
+        conn.execute(
+            """
+            INSERT INTO research_tasks
+            (id, user_id, workspace_id, ticker, trade_date, status)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (task_id, DEFAULT_USER_ID, DEFAULT_WORKSPACE_ID, ticker, trade_date, "pending"),
+        )
+        row = conn.execute("SELECT * FROM research_tasks WHERE id = ?", (task_id,)).fetchone()
+    return _dict(row)
+
+
 def update_research_task(db_path: Path | str, task_id: str, **fields: Any) -> dict[str, Any]:
     allowed = {"status", "progress_stage", "error_message", "failed_stage", "report_id"}
     updates = {key: value for key, value in fields.items() if key in allowed}

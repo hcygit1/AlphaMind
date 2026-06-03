@@ -3,6 +3,7 @@ from pathlib import Path
 
 from server.db.connection import connect
 from server.db.connection import init_db
+import server.db.repositories as repositories
 from server.db.repositories import (
     add_agent_message,
     create_agent_session,
@@ -165,3 +166,38 @@ def test_active_research_tasks_use_stable_tie_breakers_for_same_second_rows(tmp_
             )
 
     assert [task["id"] for task in list_active_research_tasks(db_path)] == ["task_a", "task_z"]
+
+
+def test_create_research_task_if_none_active_blocks_pending_task(tmp_path: Path):
+    db_path = tmp_path / "test.sqlite3"
+    init_db(db_path)
+    upsert_default_identity(db_path)
+    create_research_task(db_path, ticker="600519", trade_date="2026-06-03")
+
+    try:
+        repositories.create_research_task_if_none_active(
+            db_path,
+            ticker="300750",
+            trade_date="2026-06-03",
+        )
+    except RuntimeError as exc:
+        assert "同时只能运行一个" in str(exc)
+    else:
+        raise AssertionError("expected active task gate to reject a second pending task")
+
+
+def test_create_research_task_if_none_active_allows_after_completed_task(tmp_path: Path):
+    db_path = tmp_path / "test.sqlite3"
+    init_db(db_path)
+    upsert_default_identity(db_path)
+    completed = create_research_task(db_path, ticker="600519", trade_date="2026-06-03")
+    update_research_task(db_path, completed["id"], status="completed")
+
+    task = repositories.create_research_task_if_none_active(
+        db_path,
+        ticker="300750",
+        trade_date="2026-06-03",
+    )
+
+    assert task["ticker"] == "300750"
+    assert task["status"] == "pending"
