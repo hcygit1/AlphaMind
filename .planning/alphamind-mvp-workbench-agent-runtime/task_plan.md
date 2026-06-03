@@ -13,7 +13,7 @@ Use the approved superpowers implementation plan to build the Phase 1 AlphaMind 
 
 ## Current Phase
 
-Phase 3: Report And Research Services (next)
+Phase 3: Report And Research Services (complete; next Phase 4 FastAPI Routes)
 
 ## Execution Rule
 
@@ -48,11 +48,11 @@ Each agent must read this file, `findings.md`, `progress.md`, the implementation
 
 ### Phase 3: Report And Research Services
 
-- [ ] Execute implementation plan Task 3
-- [ ] Execute implementation plan Task 4
-- [ ] Verify report service and research service tests
-- [ ] Commit service-layer changes
-- **Status:** pending
+- [x] Execute implementation plan Task 3
+- [x] Execute implementation plan Task 4
+- [x] Verify report service and research service tests
+- [x] Commit service-layer changes (`3524a8e feat: 添加投研服务层`)
+- **Status:** complete
 
 ### Phase 4: FastAPI Routes
 
@@ -105,6 +105,9 @@ Each agent must read this file, `findings.md`, `progress.md`, the implementation
 | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pip` unavailable because the venv has no `pip` module | 1 | Used `/Users/hcy/.local/bin/uv pip install --python /Users/hcy/Desktop/file/AlphaMind/.venv/bin/python ...` |
 | Expected RED failure: `ModuleNotFoundError: No module named 'server.db'` | 1 | Added Task 2 SQLite connection, schema, repositories, and shared Pydantic schemas |
 | Expected RED failures: SQLite foreign key not enforced and same-second repository ordering unstable | 1 | Enabled `PRAGMA foreign_keys = ON` per connection and added deterministic order tie-breakers for reports, active tasks, and agent messages |
+| Task 3 first RED attempt could not find `tests/server/test_report_service.py` because the patch was initially applied outside the isolated worktree | 1 | Removed the mistaken file from the main checkout and re-applied the test file using an absolute path inside `.worktrees/mvp-workbench-agent-runtime` |
+| Expected RED failure: `ModuleNotFoundError: No module named 'server.services'` | 1 | Added `server/services/__init__.py` and `server/services/report_service.py` |
+| Expected RED failure: `ModuleNotFoundError: No module named 'server.services.research_service'` | 1 | Added `server/services/research_service.py` |
 
 ## Handoff Checklist
 

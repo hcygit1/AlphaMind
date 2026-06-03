@@ -24,15 +24,18 @@
 
 ## Current Handoff
 
-- Last completed phase: Phase 2.
+- Last completed phase: Phase 3.
 - Task 1 implementation commit: `0c15777 feat: 添加FastAPI服务骨架`.
 - Task 2 implementation commit: `4192a37 feat: 添加SQLite持久化层`.
+- Task 3 and Task 4 implementation commit: `3524a8e feat: 添加投研服务层`.
 - Backend service skeleton is in place with FastAPI app factory, CORS setup, and `/api/health`.
 - SQLite persistence layer is in place with schema initialization, default identity upsert, research task/report/session/message/page-context repositories, shared Pydantic schemas, and `list_active_research_tasks` returning pending/running tasks.
+- Report service is in place with legacy state JSON indexing, section extraction, signal extraction, summary extraction, and report detail assembly.
+- Research service is in place with task creation, synchronous/background execution helpers, fake-runner-testable orchestration, repository-backed active task gating, report creation, and in-memory SSE event buffering.
 - Worktree path: `/Users/hcy/Desktop/file/AlphaMind/.worktrees/mvp-workbench-agent-runtime`
 - Branch: `feat/mvp-workbench-agent-runtime`
-- Next recommended action: start Phase 3, which maps to implementation plan Task 3 and Task 4, using `docs/superpowers/plans/2026-06-03-alphamind-mvp-workbench-agent-runtime.md`.
-- Before starting Phase 3, read:
+- Next recommended action: start Phase 4 / implementation plan Task 5 in a separate worker, adding FastAPI routes on top of the completed service layer.
+- Before starting Phase 4, read:
   - `.planning/alphamind-mvp-workbench-agent-runtime/task_plan.md`
   - `.planning/alphamind-mvp-workbench-agent-runtime/findings.md`
   - `.planning/alphamind-mvp-workbench-agent-runtime/progress.md`
@@ -55,6 +58,12 @@
 | Task 2 quality target test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_db_repositories.py -v` | Repository quality regressions pass | 7 passed in 0.05s | pass |
 | Task 2 quality required test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_db_repositories.py -v` | Required repository test command passes | 7 passed in 0.05s | pass |
 | Task 2 quality required regression | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py -v` | Required app factory + repository test command passes | 8 passed, 1 warning in 0.13s | pass |
+| Task 3 initial path error | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_report_service.py -v` | Intended RED failure from missing service layer | Pytest could not find `tests/server/test_report_service.py` because the test file was first added outside the isolated worktree | fail, corrected |
+| Task 3 RED test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_report_service.py -v` | Fails because `server.services` is missing | Failed with `ModuleNotFoundError: No module named 'server.services'` | pass |
+| Task 3 GREEN test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_report_service.py -v` | Report service tests pass | 2 passed in 0.02s | pass |
+| Task 4 RED test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_research_service.py -v` | Fails because `ResearchService` is missing | Failed with `ModuleNotFoundError: No module named 'server.services.research_service'` | pass |
+| Task 4 GREEN test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_research_service.py -v` | Research service tests pass | 2 passed in 0.03s | pass |
+| Phase 3 regression | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py tests/server/test_report_service.py tests/server/test_research_service.py -v` | App factory, repositories, report service, and research service tests pass | 12 passed, 1 warning in 0.15s | pass |
 
 ## Error Log
 
@@ -65,6 +74,9 @@
 | 2026-06-03 17:06 CST | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pip install ...` failed because `pip` is not installed in the shared venv | 1 | Installed Task 1 dependencies with `/Users/hcy/.local/bin/uv pip install --python /Users/hcy/Desktop/file/AlphaMind/.venv/bin/python ...` |
 | 2026-06-03 17:13 CST | Expected RED failure: `ModuleNotFoundError: No module named 'server.db'` | 1 | Added Task 2 SQLite connection, schema, repositories, models, then reran target test successfully |
 | 2026-06-03 17:38 CST | Expected RED failures: SQLite foreign key not enforced and same-second repository ordering unstable | 1 | Enabled SQLite foreign keys per connection and added stable list query tie-breakers |
+| 2026-06-03 18:00 CST | Task 3 first RED attempt reported `ERROR: file or directory not found: tests/server/test_report_service.py` | 1 | Removed the test file accidentally added in the main checkout, re-applied it inside the isolated worktree, and reran RED successfully |
+| 2026-06-03 18:01 CST | Expected RED failure: `ModuleNotFoundError: No module named 'server.services'` | 1 | Added `server/services/__init__.py` and `server/services/report_service.py`, then reran target test successfully |
+| 2026-06-03 18:04 CST | Expected RED failure: `ModuleNotFoundError: No module named 'server.services.research_service'` | 1 | Added `server/services/research_service.py`, then reran target test successfully |
 
 ### Phase 1: Backend Dependencies And Server Skeleton
 
@@ -145,15 +157,46 @@
 - Next recommended action:
   - Commit the Task 2 quality fix.
 
+### Phase 3: Report And Research Services
+
+- **Status:** complete
+- **Started:** 2026-06-03 18:00 CST
+- **Completed:** 2026-06-03 18:08 CST
+- Actions taken:
+  - Created `tests/server/test_report_service.py` first and confirmed the intended RED failure after correcting the worktree path.
+  - Added `server/services/__init__.py` and `server/services/report_service.py`.
+  - Implemented `index_report_file`, `build_report_detail`, `extract_report_sections`, `extract_signal`, `extract_summary`, and `load_state`.
+  - Created `tests/server/test_research_service.py` first with a `FakeRunner`, including coverage that active task gating uses repository state.
+  - Confirmed the Task 4 RED failure before adding `server/services/research_service.py`.
+  - Implemented `ResearchService` with task creation, `run_task_sync`, background `start_task`, report creation, failed-task updates, and in-memory SSE event buffering.
+  - Kept `default_runner` backed by `AlphaMindGraph.propagate`, while importing `AlphaMindGraph` lazily so service tests with a fake runner do not initialize real LLM execution.
+  - Did not add or register FastAPI routes; Task 5 remains untouched.
+- Files created/modified:
+  - `server/services/__init__.py`
+  - `server/services/report_service.py`
+  - `server/services/research_service.py`
+  - `tests/server/test_report_service.py`
+  - `tests/server/test_research_service.py`
+- Test results:
+  - RED Task 3: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_report_service.py -v` -> `ModuleNotFoundError: No module named 'server.services'`.
+  - GREEN Task 3: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_report_service.py -v` -> 2 passed in 0.02s.
+  - RED Task 4: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_research_service.py -v` -> `ModuleNotFoundError: No module named 'server.services.research_service'`.
+  - GREEN Task 4: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_research_service.py -v` -> 2 passed in 0.03s.
+  - Required regression: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py tests/server/test_report_service.py tests/server/test_research_service.py -v` -> 12 passed, 1 warning in 0.15s.
+- Commit:
+  - `3524a8e feat: 添加投研服务层`
+- Next recommended action:
+  - Start Phase 4 / implementation plan Task 5 in a separate worker, adding API routes that call the completed service layer.
+
 ## 5-Question Reboot Check
 
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 2 complete; ready for Phase 3 |
-| Where am I going? | Phase 3: report and research services |
+| Where am I? | Phase 3 complete; ready for Phase 4 |
+| Where am I going? | Phase 4: FastAPI routes |
 | What's the goal? | Build the Phase 1 AlphaMind MVP workbench and Agent Runtime foundation |
 | What have I learned? | See `findings.md` |
-| What have I done? | Created scoped planning-with-files tracking files, completed Task 1 backend service skeleton, and completed Task 2 SQLite persistence layer |
+| What have I done? | Created scoped planning-with-files tracking files, completed Task 1 backend service skeleton, completed Task 2 SQLite persistence layer, and completed Task 3/4 report and research service layer |
 
 ---
 
