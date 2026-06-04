@@ -41,6 +41,7 @@
 - Research SSE now returns HTTP 404 for unknown task IDs instead of entering an empty SSE loop.
 - Agent API remains a Task 5 placeholder only: it stores user and assistant messages and returns `tool_cards: []`; Agent Runtime/tool execution remains untouched for Task 6+.
 - Agent message writes and runtime page-context writes now return HTTP 404 for missing sessions before repository writes.
+- Agent message reads now also return HTTP 404 for missing sessions before listing messages.
 - Worktree path: `/Users/hcy/Desktop/file/AlphaMind/.worktrees/mvp-workbench-agent-runtime`
 - Branch: `feat/mvp-workbench-agent-runtime`
 - Next recommended action: start Phase 5 / implementation plan Task 6 and Task 7 in a separate worker, adding Agent Runtime core and tool registry.
@@ -345,8 +346,12 @@
   - RED: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_research_api.py -q` -> 1 failed, 6 passed, 1 warning.
   - GREEN route regression: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_research_api.py tests/server/test_app_factory.py -q` -> 10 passed, 1 warning in 0.61s.
   - Required backend regression: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py tests/server/test_report_service.py tests/server/test_research_service.py tests/server/test_research_api.py -q` -> 27 passed, 1 warning in 0.68s.
+- Commit:
+  - `d42cae4 fix: 统一Agent会话读取错误处理`
+- Review:
+  - Task 5 code-quality re-review approved after the fix.
 - Next recommended action:
-  - Commit the Task 5 quality re-review fix, then start Phase 5 / Task 6.
+  - Start Phase 5 / Task 6.
 
 ## 5-Question Reboot Check
 

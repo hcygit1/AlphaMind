@@ -61,6 +61,7 @@ Each agent must read this file, `findings.md`, `progress.md`, the implementation
 - [x] Verify API tests and app factory tests
 - [x] Commit `feat: 添加工作台API路由` (`aedcf1c`)
 - [x] Address Task 5 quality review: unknown research SSE tasks and invalid agent/runtime sessions return 404, and AgentService is shared through app state with the injected research service
+- [x] Address Task 5 quality re-review: missing Agent session message reads now return 404 instead of an empty 200 response (`d42cae4`)
 - **Status:** complete
 
 ### Phase 5: Agent Runtime And Tools
