@@ -25,8 +25,20 @@ class DeepResearchTool:
                 content="请提供股票代码和分析日期。",
             )
 
-        task = self.research_service.create_task(str(ticker), str(trade_date))
-        self.research_service.start_task(task["id"])
+        try:
+            task = self.research_service.create_task(str(ticker), str(trade_date))
+            self.research_service.start_task(task["id"])
+        except RuntimeError as exc:
+            return ToolResult(
+                tool_name=self.name,
+                status="failed",
+                content=str(exc),
+                payload={
+                    "ticker": ticker,
+                    "trade_date": trade_date,
+                },
+            )
+
         return ToolResult(
             tool_name=self.name,
             status="accepted",

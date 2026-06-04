@@ -73,6 +73,7 @@ Each agent must read this file, `findings.md`, `progress.md`, the implementation
 - [x] Verify Agent Runtime tool tests
 - [x] Commit Agent Runtime core changes
 - [x] Commit Agent Runtime tool wiring changes
+- [x] Address Task 7 code quality review: deep research service conflicts now return failed tool cards instead of Agent API 500s
 - **Status:** complete
 
 ### Phase 6: Vite Workbench Frontend
@@ -118,6 +119,7 @@ Each agent must read this file, `findings.md`, `progress.md`, the implementation
 | Task 5 quality RED exposed an unknown task SSE loop and missing shared AgentService app state | 1 | Added route-level existence checks, repository/session service lookup, and `app.state.agent_service` initialized with shared `research_service` |
 | Expected Task 6 RED failure: `ModuleNotFoundError: No module named 'alphamind.agent_runtime'` | 1 | Added the minimal `alphamind.agent_runtime` package with runtime orchestration, intent routing, context types, tool registry, and Phase 1 extension-point stubs |
 | Task 6 review RED failure: mixed report-analysis prompt routed to `report_summary` before `deep_research` | 1 | Added branch coverage and prioritized explicit deep research keywords before generic report summary keywords |
+| Task 7 review RED failure: `DeepResearchTool.run()` surfaced `RuntimeError` from `create_task()` / `start_task()` as an Agent API 500 | 1 | Added Agent API regression coverage and returned a failed `deep_research` tool card so the assistant message is persisted |
 
 ## Handoff Checklist
 

@@ -468,15 +468,40 @@
 - Next recommended action:
   - Start Phase 6 / Task 8: Vite workbench frontend shell.
 
+### Task 7 Code Quality Review Fix
+
+- **Status:** complete
+- **Started:** 2026-06-04 CST
+- **Completed:** 2026-06-04 CST
+- Actions taken:
+  - Read the active planning files, required Task 7 tool/service/test files, and `git status --short` before editing.
+  - Added an Agent API regression test for `FakeResearchService(fail_create=True)` so an active deep-research task conflict returns HTTP 200 with a failed `deep_research` tool card and persists both user and assistant messages.
+  - Confirmed RED before production changes: `tests/server/test_research_api.py` returned 500 for the new Agent message test.
+  - Updated `DeepResearchTool.run()` to catch `RuntimeError` from `create_task()` and `start_task()`, returning `ToolResult(status="failed", content=str(exc), payload={"ticker": ..., "trade_date": ...})`.
+  - Preserved the existing failed behavior for missing ticker/trade_date context and did not add new tools or frontend changes.
+- Files modified:
+  - `alphamind/agent_runtime/tools/deep_research.py`
+  - `tests/server/test_research_api.py`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/task_plan.md`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/findings.md`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/progress.md`
+- Test results:
+  - RED: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_research_api.py -q` -> 1 failed, 9 passed, 1 warning; new test saw HTTP 500 instead of 200.
+  - GREEN route/API test: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_research_api.py -q` -> 10 passed, 1 warning in 0.69s.
+  - Required runtime/API regression: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_agent_tools.py tests/server/test_agent_runtime.py tests/server/test_research_api.py -q` -> 20 passed, 1 warning in 0.94s.
+  - Required backend regression: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py tests/server/test_report_service.py tests/server/test_research_service.py tests/server/test_research_api.py tests/server/test_agent_runtime.py tests/server/test_agent_tools.py -q` -> 40 passed, 1 warning in 1.10s.
+- Next recommended action:
+  - Re-run Task 7 code quality review or proceed to Phase 6 / Task 8 after review approval.
+
 ## 5-Question Reboot Check
 
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 5 Task 7 Agent tools wiring complete |
+| Where am I? | Phase 5 Task 7 Agent tools wiring quality fix complete |
 | Where am I going? | Phase 6 Task 8: Vite workbench frontend shell |
 | What's the goal? | Build the Phase 1 AlphaMind MVP workbench and Agent Runtime foundation |
 | What have I learned? | See `findings.md` |
-| What have I done? | Created scoped planning-with-files tracking files, completed Task 1 backend service skeleton, completed Task 2 SQLite persistence layer, completed Task 3/4 report and research service layer, fixed Phase 3 code-quality review findings, completed Task 5 FastAPI routes, fixed Task 5 quality review/re-review findings, completed Task 6 Agent Runtime core, fixed Task 6 route-priority review finding, and completed Task 7 Agent tools wiring |
+| What have I done? | Created scoped planning-with-files tracking files, completed Task 1 backend service skeleton, completed Task 2 SQLite persistence layer, completed Task 3/4 report and research service layer, fixed Phase 3 code-quality review findings, completed Task 5 FastAPI routes, fixed Task 5 quality review/re-review findings, completed Task 6 Agent Runtime core, fixed Task 6 route-priority review finding, completed Task 7 Agent tools wiring, and fixed Task 7 active-task conflict handling |
 
 ---
 

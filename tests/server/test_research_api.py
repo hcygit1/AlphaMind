@@ -281,3 +281,46 @@ def test_agent_message_uses_injected_research_service_for_deep_research(
             },
         }
     ]
+
+
+def test_agent_deep_research_conflict_returns_failed_tool_card_and_saves_messages(
+    tmp_path: Path,
+    monkeypatch,
+):
+    monkeypatch.setenv("ALPHAMIND_DB_PATH", str(tmp_path / "test.sqlite3"))
+    app = create_app(research_service=FakeResearchService(fail_create=True))
+    test_client = TestClient(app, raise_server_exceptions=False)
+    session = test_client.post("/api/agent/sessions", json={"title": "投研冲突"}).json()
+    context_response = test_client.put(
+        "/api/runtime/page-context",
+        json={
+            "session_id": session["id"],
+            "page": "deep_research",
+            "context": {"ticker": "300750", "trade_date": "2026-06-03"},
+        },
+    )
+    assert context_response.status_code == 200
+
+    response = test_client.post(
+        f"/api/agent/sessions/{session['id']}/messages",
+        json={"content": "帮我做一次深度投研"},
+    )
+
+    assert response.status_code == 200
+    assistant = response.json()
+    assert "同时只能运行一个" in assistant["content"]
+    assert assistant["tool_cards"] == [
+        {
+            "type": "deep_research",
+            "status": "failed",
+            "payload": {
+                "ticker": "300750",
+                "trade_date": "2026-06-03",
+            },
+        }
+    ]
+
+    messages_response = test_client.get(f"/api/agent/sessions/{session['id']}")
+    assert messages_response.status_code == 200
+    messages = messages_response.json()["messages"]
+    assert [message["role"] for message in messages] == ["user", "assistant"]
