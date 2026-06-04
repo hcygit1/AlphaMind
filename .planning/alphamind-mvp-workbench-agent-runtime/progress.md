@@ -493,15 +493,59 @@
 - Next recommended action:
   - Re-run Task 7 code quality review or proceed to Phase 6 / Task 8 after review approval.
 
+### Phase 6 Task 8: Vite Workbench Frontend Shell
+
+- **Status:** complete
+- **Started:** 2026-06-04 15:09 CST
+- **Completed:** 2026-06-04 15:16 CST
+- Actions taken:
+  - Read the active planning files, implementation plan Task 8, frontend layout / Agent drawer / gray-state module design sections, and `git status --short` before editing.
+  - Created a new `frontend/` Vite + React + TypeScript scaffold with `lucide-react` and plain CSS.
+  - Added the workbench shell, responsive sidebar navigation, Agent bottom-right orb and right drawer, and initial Deep Research / Reports / Settings page shells.
+  - Kept future modules as disabled gray-state sidebar entries: Factor Lab, Strategy Lab, Paper Trading, Orders & Positions, and Review & Analytics.
+  - Added `.gitignore` entries for `frontend/node_modules/` and `frontend/dist/` so only source and lockfile are committed.
+  - Ran `npm install`; the first run was manually terminated after a long silent wait while npm was finishing dependency reification, then the second run completed successfully.
+  - Ran `npm run build` successfully.
+  - Ran a local Vite browser smoke check against `http://127.0.0.1:5173/`: verified the shell/sidebar text, gray-state module labels, unique Agent orb button, and Agent drawer open state with close/send buttons.
+  - Did not create `frontend/src/api/*`, did not connect API calls, did not add EventSource, and did not implement Agent network messaging; those remain Task 9 and Task 10.
+- Files created/modified:
+  - `.gitignore`
+  - `frontend/package.json`
+  - `frontend/package-lock.json`
+  - `frontend/index.html`
+  - `frontend/tsconfig.json`
+  - `frontend/vite.config.ts`
+  - `frontend/src/main.tsx`
+  - `frontend/src/App.tsx`
+  - `frontend/src/components/Shell.tsx`
+  - `frontend/src/components/Sidebar.tsx`
+  - `frontend/src/components/AgentDrawer.tsx`
+  - `frontend/src/features/research/DeepResearchPage.tsx`
+  - `frontend/src/features/reports/ReportsPage.tsx`
+  - `frontend/src/features/settings/SettingsPage.tsx`
+  - `frontend/src/styles.css`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/task_plan.md`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/findings.md`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/progress.md`
+- Test results:
+  - Dependency install: `cd frontend && npm install` -> up to date, audited 69 packages in 2s; 2 moderate audit findings reported.
+  - Build: `cd frontend && npm run build` -> TypeScript and Vite production build passed; Vite built 1587 modules in 906ms.
+  - Browser smoke: Vite dev server on `http://127.0.0.1:5173/` -> `hasShell: true`, `hasDisabled: true`, Agent orb count `1`, drawer visible with close button count `1` and send button count `1`.
+  - Audit note: `npm audit --audit-level=moderate` exits 1 due Vite 5 / esbuild moderate advisories; npm's suggested fix requires breaking Vite 8.0.16, so no dependency major upgrade was made in Task 8.
+- Commit:
+  - `feat: 添加Vite工作台前端骨架` (hash reported in final handoff)
+- Next recommended action:
+  - Start Phase 6 / Task 9: add frontend API client/types, wire Deep Research and Reports pages to FastAPI/SSE, and keep Agent networking untouched until Task 10.
+
 ## 5-Question Reboot Check
 
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 5 Task 7 Agent tools wiring quality fix complete |
-| Where am I going? | Phase 6 Task 8: Vite workbench frontend shell |
+| Where am I? | Phase 6 Task 8 Vite workbench frontend shell complete |
+| Where am I going? | Phase 6 Task 9: frontend API wiring for Deep Research and Reports |
 | What's the goal? | Build the Phase 1 AlphaMind MVP workbench and Agent Runtime foundation |
 | What have I learned? | See `findings.md` |
-| What have I done? | Created scoped planning-with-files tracking files, completed Task 1 backend service skeleton, completed Task 2 SQLite persistence layer, completed Task 3/4 report and research service layer, fixed Phase 3 code-quality review findings, completed Task 5 FastAPI routes, fixed Task 5 quality review/re-review findings, completed Task 6 Agent Runtime core, fixed Task 6 route-priority review finding, completed Task 7 Agent tools wiring, and fixed Task 7 active-task conflict handling |
+| What have I done? | Created scoped planning-with-files tracking files, completed Task 1 backend service skeleton, completed Task 2 SQLite persistence layer, completed Task 3/4 report and research service layer, fixed Phase 3 code-quality review findings, completed Task 5 FastAPI routes, fixed Task 5 quality review/re-review findings, completed Task 6 Agent Runtime core, fixed Task 6 route-priority review finding, completed Task 7 Agent tools wiring, fixed Task 7 active-task conflict handling, and completed Task 8 Vite frontend shell |
 
 ---
 

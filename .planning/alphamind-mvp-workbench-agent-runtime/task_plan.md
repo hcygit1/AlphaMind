@@ -13,7 +13,7 @@ Use the approved superpowers implementation plan to build the Phase 1 AlphaMind 
 
 ## Current Phase
 
-Phase 5 Task 7 Agent tools wiring complete; next Phase 6 Vite workbench frontend
+Phase 6 Task 8 Vite workbench frontend shell complete; next Phase 6 Task 9 frontend API wiring
 
 ## Execution Rule
 
@@ -78,12 +78,12 @@ Each agent must read this file, `findings.md`, `progress.md`, the implementation
 
 ### Phase 6: Vite Workbench Frontend
 
-- [ ] Execute implementation plan Task 8
+- [x] Execute implementation plan Task 8
 - [ ] Execute implementation plan Task 9
 - [ ] Execute implementation plan Task 10
-- [ ] Verify `npm run build` from `frontend/`
-- [ ] Commit frontend changes
-- **Status:** pending
+- [x] Verify `npm run build` from `frontend/`
+- [x] Commit frontend shell changes
+- **Status:** Task 8 complete; Task 9 and Task 10 pending
 
 ### Phase 7: Documentation And Final Verification
 
@@ -120,6 +120,8 @@ Each agent must read this file, `findings.md`, `progress.md`, the implementation
 | Expected Task 6 RED failure: `ModuleNotFoundError: No module named 'alphamind.agent_runtime'` | 1 | Added the minimal `alphamind.agent_runtime` package with runtime orchestration, intent routing, context types, tool registry, and Phase 1 extension-point stubs |
 | Task 6 review RED failure: mixed report-analysis prompt routed to `report_summary` before `deep_research` | 1 | Added branch coverage and prioritized explicit deep research keywords before generic report summary keywords |
 | Task 7 review RED failure: `DeepResearchTool.run()` surfaced `RuntimeError` from `create_task()` / `start_task()` as an Agent API 500 | 1 | Added Agent API regression coverage and returned a failed `deep_research` tool card so the assistant message is persisted |
+| First Task 8 `npm install` was manually terminated after a long silent wait while npm was in `reify` cleanup | 1 | Re-ran `npm install`; dependencies completed successfully and `npm run build` passed |
+| Task 8 `npm audit` reports 2 moderate findings through Vite 5 / esbuild, with npm's suggested fix requiring a breaking Vite 8 upgrade | 1 | Left versions aligned with the approved Task 8 plan and recorded the constraint in `findings.md` for later dependency-upgrade work |
 
 ## Handoff Checklist
 
