@@ -537,15 +537,47 @@
 - Next recommended action:
   - Start Phase 6 / Task 9: add frontend API client/types, wire Deep Research and Reports pages to FastAPI/SSE, and keep Agent networking untouched until Task 10.
 
+### Task 8 UI/UX and Code Quality Review Fix
+
+- **Status:** complete
+- **Started:** 2026-06-04 15:37 CST
+- **Completed:** 2026-06-04 15:37 CST
+- Actions taken:
+  - Verified the review findings against the Task 8 frontend files before editing.
+  - Replaced visible development-process UI copy in Agent Drawer, Deep Research, Reports, and Settings with product status copy such as `研究服务未就绪` and `暂无报告`.
+  - Removed the visible `MVP Workbench` stage label from the shell header.
+  - Added dynamic `aria-expanded` and `aria-controls="agent-drawer"` to the Agent orb, gave the drawer `id="agent-drawer"`, hid and removed the orb from keyboard navigation while the drawer is open, and added Escape-to-close behavior.
+  - Added `onSubmit` with `preventDefault()` to the Deep Research form so pressing Enter does not refresh the page.
+  - Replaced the viewport-scaled workspace H1 `clamp(...)` font size with a fixed `40px`; the existing mobile breakpoint still sets `28px`.
+  - Did not create `frontend/src/api/*`, did not add EventSource, and did not add Agent network requests.
+- Files modified:
+  - `frontend/src/components/AgentDrawer.tsx`
+  - `frontend/src/components/Shell.tsx`
+  - `frontend/src/features/research/DeepResearchPage.tsx`
+  - `frontend/src/features/reports/ReportsPage.tsx`
+  - `frontend/src/features/settings/SettingsPage.tsx`
+  - `frontend/src/styles.css`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/task_plan.md`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/findings.md`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/progress.md`
+- Test results:
+  - Forbidden visible-copy scan: `rg -n "Task 9|后续任务|API 接入|FastAPI|Phase 1|前端 API|等待 API" frontend/src` -> no matches.
+  - Build: `cd frontend && npm run build` -> TypeScript and Vite production build passed; Vite built 1587 modules in 944ms.
+  - Browser smoke: Vite dev server on `http://127.0.0.1:5173/` -> before open Agent orb count `1`; while open Agent orb count `0` and drawer count `1`; after Escape drawer count `0` and Agent orb count `1`.
+- Commit:
+  - `fix: 优化工作台骨架交互与文案` (hash reported in final handoff)
+- Next recommended action:
+  - Re-run Task 8 UI/UX and code quality review. Proceed to Task 9 only after approval.
+
 ## 5-Question Reboot Check
 
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 6 Task 8 Vite workbench frontend shell complete |
-| Where am I going? | Phase 6 Task 9: frontend API wiring for Deep Research and Reports |
+| Where am I? | Phase 6 Task 8 Vite workbench frontend shell quality fix complete |
+| Where am I going? | Task 8 re-review, then Phase 6 Task 9 after approval |
 | What's the goal? | Build the Phase 1 AlphaMind MVP workbench and Agent Runtime foundation |
 | What have I learned? | See `findings.md` |
-| What have I done? | Created scoped planning-with-files tracking files, completed Task 1 backend service skeleton, completed Task 2 SQLite persistence layer, completed Task 3/4 report and research service layer, fixed Phase 3 code-quality review findings, completed Task 5 FastAPI routes, fixed Task 5 quality review/re-review findings, completed Task 6 Agent Runtime core, fixed Task 6 route-priority review finding, completed Task 7 Agent tools wiring, fixed Task 7 active-task conflict handling, and completed Task 8 Vite frontend shell |
+| What have I done? | Created scoped planning-with-files tracking files, completed Task 1 backend service skeleton, completed Task 2 SQLite persistence layer, completed Task 3/4 report and research service layer, fixed Phase 3 code-quality review findings, completed Task 5 FastAPI routes, fixed Task 5 quality review/re-review findings, completed Task 6 Agent Runtime core, fixed Task 6 route-priority review finding, completed Task 7 Agent tools wiring, fixed Task 7 active-task conflict handling, completed Task 8 Vite frontend shell, and fixed Task 8 UI/UX review findings |
 
 ---
 

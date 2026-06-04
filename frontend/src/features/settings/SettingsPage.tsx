@@ -12,21 +12,21 @@ export function SettingsPage() {
           <dt>Workspace</dt>
           <dd>default_workspace</dd>
           <dt>Session Mode</dt>
-          <dd>Local MVP</dd>
+          <dd>本地工作区</dd>
         </dl>
       </div>
       <div className="panel">
         <div className="panel-heading compact">
           <h2>Runtime Configuration</h2>
-          <span className="muted">Read-only shell</span>
+          <span className="muted">只读</span>
         </div>
         <dl className="settings-list">
           <dt>LLM Provider</dt>
-          <dd>Configured in backend environment</dd>
+          <dd>默认模型配置</dd>
           <dt>Reports Directory</dt>
-          <dd>results_dir / ticker logs</dd>
-          <dt>Legacy UI</dt>
-          <dd>web/ retained during Phase 1</dd>
+          <dd>本地报告存储</dd>
+          <dt>Research Service</dt>
+          <dd>未就绪</dd>
         </dl>
       </div>
     </section>

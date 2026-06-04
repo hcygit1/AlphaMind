@@ -1,8 +1,23 @@
 import { Bot, SendHorizonal, X } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 export function AgentDrawer() {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -10,15 +25,24 @@ export function AgentDrawer() {
 
   return (
     <>
-      <button className="agent-orb" onClick={() => setOpen(true)} type="button" aria-label="打开 AlphaMind Agent">
+      <button
+        className="agent-orb"
+        onClick={() => setOpen(true)}
+        type="button"
+        aria-label="打开 AlphaMind Agent"
+        aria-expanded={open}
+        aria-controls="agent-drawer"
+        hidden={open}
+        tabIndex={open ? -1 : undefined}
+      >
         <Bot size={24} aria-hidden="true" />
       </button>
       {open && (
-        <aside className="agent-drawer" aria-label="AlphaMind Agent">
+        <aside id="agent-drawer" className="agent-drawer" aria-label="AlphaMind Agent">
           <header className="agent-header">
             <div>
               <strong>AlphaMind Agent</strong>
-              <span>当前版本将支持报告总结和深度投研工具。</span>
+              <span>协助梳理研究问题、总结报告和启动深度投研。</span>
             </div>
             <button className="icon-button" onClick={() => setOpen(false)} type="button" aria-label="关闭 Agent">
               <X size={18} aria-hidden="true" />
@@ -30,11 +54,11 @@ export function AgentDrawer() {
           </div>
           <div className="agent-messages">
             <div className="assistant-message">
-              我可以帮你总结当前报告，或启动深度投研任务。前端 API 接入会在后续任务完成。
+              我可以帮你总结当前报告，或启动深度投研任务。当前研究服务未就绪。
             </div>
             <div className="tool-card">
-              <span>Tool availability</span>
-              <strong>Report Summary, Deep Research</strong>
+              <span>可用能力</span>
+              <strong>报告总结、深度投研</strong>
             </div>
           </div>
           <form className="agent-input" onSubmit={handleSubmit}>

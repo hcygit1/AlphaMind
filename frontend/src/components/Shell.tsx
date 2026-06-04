@@ -21,7 +21,7 @@ export function Shell({ children, route, onRouteChange }: ShellProps) {
       <main className="workspace" aria-labelledby="workspace-title">
         <div className="workspace-header">
           <div>
-            <span className="workspace-kicker">MVP Workbench</span>
+            <span className="workspace-kicker">Investment Workbench</span>
             <h1 id="workspace-title">{routeTitles[route]}</h1>
           </div>
           <div className="market-strip" aria-label="Market status">

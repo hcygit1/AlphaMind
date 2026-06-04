@@ -8,7 +8,7 @@ export function ReportsPage() {
       <div className="panel-heading">
         <div>
           <h2>Research Reports</h2>
-          <p>历史报告列表和详情查看将在后续任务接入 Reports API。</p>
+          <p>按股票、交易日期和研究信号查看历史深度投研报告。</p>
         </div>
         <button className="secondary-action" type="button" disabled>
           <FileSearch size={18} aria-hidden="true" />
@@ -25,7 +25,7 @@ export function ReportsPage() {
         </div>
         <div className="empty-table" role="row">
           <FileSearch size={22} aria-hidden="true" />
-          <span>暂无已加载报告。Task 9 会接入报告列表与详情。</span>
+          <span>暂无报告。完成深度投研后，报告会显示在这里。</span>
         </div>
       </div>
     </section>
