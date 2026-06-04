@@ -176,6 +176,15 @@ def test_invalid_agent_session_send_message_returns_404(client):
     assert response.json()["detail"] == "Agent session not found"
 
 
+def test_invalid_agent_session_read_messages_returns_404(client):
+    test_client, _service = client
+
+    response = test_client.get("/api/agent/sessions/session_missing")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Agent session not found"
+
+
 def test_invalid_page_context_session_returns_404(client):
     test_client, _service = client
 

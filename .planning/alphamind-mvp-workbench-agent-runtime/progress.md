@@ -87,6 +87,9 @@
 | Task 5 quality GREEN app factory test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py -v` | Shared AgentService and app-state route usage pass | 3 passed, 1 warning in 0.97s | pass |
 | Task 5 quality required research API verification | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_research_api.py -v` | Required research API command passes | 6 passed, 1 warning in 0.91s | pass |
 | Task 5 quality required backend regression | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py tests/server/test_report_service.py tests/server/test_research_service.py tests/server/test_research_api.py -q` | Required backend server test scope passes | 26 passed, 1 warning in 0.72s | pass |
+| Task 5 quality re-review RED test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_research_api.py -q` | Missing Agent session message reads should return 404 | 1 failed, 6 passed: missing session read returned 200 | pass |
+| Task 5 quality re-review GREEN route test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_research_api.py tests/server/test_app_factory.py -q` | Agent session read/write route semantics are consistent | 10 passed, 1 warning in 0.61s | pass |
+| Task 5 quality re-review backend regression | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py tests/server/test_report_service.py tests/server/test_research_service.py tests/server/test_research_api.py -q` | Current backend server test scope passes after extra session-read fix | 27 passed, 1 warning in 0.68s | pass |
 
 ## Error Log
 
@@ -103,6 +106,7 @@
 | 2026-06-03 18:09 CST | Expected Phase 3 quality RED failures: `extract_signal` returned `Buy` for explicit `Sell`, no-rating fallback returned `N/A`, repository atomic helper was absent, service did not expose/use the helper, and `default_runner` summary included the full decision prefix | 1 | Reused shared `parse_rating`, added repository `create_research_task_if_none_active()` with `BEGIN IMMEDIATE`, updated `ResearchService.create_task()`, and reused `extract_summary()` in `default_runner` |
 | 2026-06-04 09:25 CST | Expected Task 5 RED failure: `create_app()` did not accept injected `research_service` | 1 | Added Task 5 FastAPI routers, `AgentService`, and app factory service injection/router registration |
 | 2026-06-04 09:44 CST | Expected Task 5 quality RED failures: missing `app.state.agent_service`, agent route bypassed app state, and unknown SSE task entered an empty stream loop | 1 | Added shared `AgentService` app-state injection, route-level session/task existence checks, and repository session lookup |
+| 2026-06-04 10:07 CST | Task 5 quality re-review found `GET /api/agent/sessions/{session_id}` returned 200 with empty messages for missing sessions | 1 | Added a regression test and made the read route return HTTP 404 using `AgentService.get_session()` |
 
 ### Phase 1: Backend Dependencies And Server Skeleton
 
@@ -321,15 +325,38 @@
 - Next recommended action:
   - Commit the Task 5 quality fix.
 
+### Task 5 Quality Re-Review Fix
+
+- **Status:** complete
+- **Started:** 2026-06-04 10:07 CST
+- **Completed:** 2026-06-04 10:08 CST
+- Actions taken:
+  - Re-ran Task 5 code-quality review after `170e1e2`; original four findings were fixed, but review found one adjacent consistency issue.
+  - Added a regression test requiring `GET /api/agent/sessions/{session_id}` to return HTTP 404 when the Agent session does not exist.
+  - Confirmed RED: the route returned 200 and an empty message list for a missing session.
+  - Updated `server/api/agent.py` so message reads reuse `AgentService.get_session()` before listing messages.
+  - Confirmed the route tests and full current backend scope pass.
+- Files modified:
+  - `server/api/agent.py`
+  - `tests/server/test_research_api.py`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/findings.md`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/progress.md`
+- Test results:
+  - RED: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_research_api.py -q` -> 1 failed, 6 passed, 1 warning.
+  - GREEN route regression: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_research_api.py tests/server/test_app_factory.py -q` -> 10 passed, 1 warning in 0.61s.
+  - Required backend regression: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py tests/server/test_report_service.py tests/server/test_research_service.py tests/server/test_research_api.py -q` -> 27 passed, 1 warning in 0.68s.
+- Next recommended action:
+  - Commit the Task 5 quality re-review fix, then start Phase 5 / Task 6.
+
 ## 5-Question Reboot Check
 
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 4 FastAPI routes and Task 5 quality review fix complete; required verification passed and ready for commit |
+| Where am I? | Phase 4 FastAPI routes and Task 5 quality review plus re-review fix complete; required verification passed and ready for commit |
 | Where am I going? | Phase 5: Agent Runtime core and tool registry |
 | What's the goal? | Build the Phase 1 AlphaMind MVP workbench and Agent Runtime foundation |
 | What have I learned? | See `findings.md` |
-| What have I done? | Created scoped planning-with-files tracking files, completed Task 1 backend service skeleton, completed Task 2 SQLite persistence layer, completed Task 3/4 report and research service layer, fixed Phase 3 code-quality review findings, completed Task 5 FastAPI routes, and fixed Task 5 quality review findings |
+| What have I done? | Created scoped planning-with-files tracking files, completed Task 1 backend service skeleton, completed Task 2 SQLite persistence layer, completed Task 3/4 report and research service layer, fixed Phase 3 code-quality review findings, completed Task 5 FastAPI routes, and fixed Task 5 quality review/re-review findings |
 
 ---
 

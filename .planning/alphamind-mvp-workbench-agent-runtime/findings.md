@@ -48,6 +48,7 @@
 | Unknown research SSE task IDs must not enter an empty streaming loop | `GET /api/research/tasks/{task_id}/events` now checks `ResearchService.get_task()` before creating the `StreamingResponse` and returns HTTP 404 when absent |
 | Agent message and page-context writes must validate session existence before SQLite writes | Added `get_agent_session()` and `AgentService.get_session()` so routes return HTTP 404 instead of surfacing SQLite foreign key failures as 500 |
 | Agent routes need the same shared research service that the app exposes for SSE | `create_app()` now builds `app.state.agent_service` with the injected/shared `app.state.research_service`; agent routes read service instances from request app state |
+| Agent session read routes must match write-route session semantics | `GET /api/agent/sessions/{session_id}` now checks session existence and returns HTTP 404 for missing sessions instead of returning an empty message list |
 
 ## Resources
 

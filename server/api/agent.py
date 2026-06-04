@@ -22,7 +22,10 @@ def create_session(payload: AgentSessionCreate, request: Request) -> dict:
 
 @router.get("/sessions/{session_id}")
 def get_session_messages(session_id: str, request: Request) -> dict:
-    return {"session_id": session_id, "messages": _service(request).list_messages(session_id)}
+    service = _service(request)
+    if not service.get_session(session_id):
+        raise HTTPException(status_code=404, detail="Agent session not found")
+    return {"session_id": session_id, "messages": service.list_messages(session_id)}
 
 
 @router.post("/sessions/{session_id}/messages")
