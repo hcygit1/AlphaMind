@@ -24,7 +24,7 @@
 
 ## Current Handoff
 
-- Last completed phase: Phase 4 FastAPI Routes plus Task 5 quality review fix.
+- Last completed task: Phase 5 Task 6 Agent Runtime core and tool registry.
 - Task 1 implementation commit: `0c15777 feat: 添加FastAPI服务骨架`.
 - Task 2 implementation commit: `4192a37 feat: 添加SQLite持久化层`.
 - Task 3 and Task 4 implementation commit: `3524a8e feat: 添加投研服务层`.
@@ -42,10 +42,12 @@
 - Agent API remains a Task 5 placeholder only: it stores user and assistant messages and returns `tool_cards: []`; Agent Runtime/tool execution remains untouched for Task 6+.
 - Agent message writes and runtime page-context writes now return HTTP 404 for missing sessions before repository writes.
 - Agent message reads now also return HTTP 404 for missing sessions before listing messages.
+- Agent Runtime core now exists under `alphamind/agent_runtime/` with context types, context manager/provider stubs, intent router, runtime dispatch, tool registry, short-term memory shell, skill registry shell, MCP adapter shell, and session dataclass.
+- Task 6 intentionally did not add `ReportSummaryTool`, `DeepResearchTool`, `tests/server/test_agent_tools.py`, or `AgentService` runtime wiring; those remain Task 7.
 - Worktree path: `/Users/hcy/Desktop/file/AlphaMind/.worktrees/mvp-workbench-agent-runtime`
 - Branch: `feat/mvp-workbench-agent-runtime`
-- Next recommended action: start Phase 5 / implementation plan Task 6 and Task 7 in a separate worker, adding Agent Runtime core and tool registry.
-- Before starting Phase 5, read:
+- Next recommended action: start Phase 5 / implementation plan Task 7 in a separate worker, wiring `ReportSummaryTool` and `DeepResearchTool` into AgentService.
+- Before starting Task 7, read:
   - `.planning/alphamind-mvp-workbench-agent-runtime/task_plan.md`
   - `.planning/alphamind-mvp-workbench-agent-runtime/findings.md`
   - `.planning/alphamind-mvp-workbench-agent-runtime/progress.md`
@@ -91,6 +93,9 @@
 | Task 5 quality re-review RED test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_research_api.py -q` | Missing Agent session message reads should return 404 | 1 failed, 6 passed: missing session read returned 200 | pass |
 | Task 5 quality re-review GREEN route test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_research_api.py tests/server/test_app_factory.py -q` | Agent session read/write route semantics are consistent | 10 passed, 1 warning in 0.61s | pass |
 | Task 5 quality re-review backend regression | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py tests/server/test_report_service.py tests/server/test_research_service.py tests/server/test_research_api.py -q` | Current backend server test scope passes after extra session-read fix | 27 passed, 1 warning in 0.68s | pass |
+| Task 6 RED test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_agent_runtime.py -v` | Fails because `alphamind.agent_runtime` is missing | Failed with `ModuleNotFoundError: No module named 'alphamind.agent_runtime'` | pass |
+| Task 6 GREEN test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_agent_runtime.py -v` | Agent Runtime core tests pass | 2 passed in 0.01s | pass |
+| Task 6 required backend regression | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py tests/server/test_report_service.py tests/server/test_research_service.py tests/server/test_research_api.py tests/server/test_agent_runtime.py -q` | Current backend server scope plus Agent Runtime tests pass | 29 passed, 1 warning in 1.01s | pass |
 
 ## Error Log
 
@@ -108,6 +113,7 @@
 | 2026-06-04 09:25 CST | Expected Task 5 RED failure: `create_app()` did not accept injected `research_service` | 1 | Added Task 5 FastAPI routers, `AgentService`, and app factory service injection/router registration |
 | 2026-06-04 09:44 CST | Expected Task 5 quality RED failures: missing `app.state.agent_service`, agent route bypassed app state, and unknown SSE task entered an empty stream loop | 1 | Added shared `AgentService` app-state injection, route-level session/task existence checks, and repository session lookup |
 | 2026-06-04 10:07 CST | Task 5 quality re-review found `GET /api/agent/sessions/{session_id}` returned 200 with empty messages for missing sessions | 1 | Added a regression test and made the read route return HTTP 404 using `AgentService.get_session()` |
+| 2026-06-04 10:03 CST | Expected Task 6 RED failure: `ModuleNotFoundError: No module named 'alphamind.agent_runtime'` | 1 | Added minimal Agent Runtime core package and reran target and backend regression tests |
 
 ### Phase 1: Backend Dependencies And Server Skeleton
 
@@ -353,15 +359,61 @@
 - Next recommended action:
   - Start Phase 5 / Task 6.
 
+### Phase 5 Task 6: Agent Runtime Core and Tool Registry
+
+- **Status:** complete
+- **Started:** 2026-06-04 10:03 CST
+- **Completed:** 2026-06-04 10:03 CST
+- Actions taken:
+  - Read the active planning files, implementation plan Task 6, Agent Runtime design section, and `git status --short` before editing.
+  - Created `tests/server/test_agent_runtime.py` first.
+  - Confirmed the required RED failure: `ModuleNotFoundError: No module named 'alphamind.agent_runtime'`.
+  - Added the minimal `alphamind.agent_runtime` package for Task 6: context types, context manager/provider stubs, tool contracts, tool registry, keyword intent router, runtime dispatch, short-term memory shell, session dataclass, skill registry shell, and disabled MCP adapter.
+  - Did not add Task 7 tools or wire `AgentService` into `AgentRuntime`.
+  - Confirmed the target Agent Runtime test and required backend regression pass.
+- Files created/modified:
+  - `alphamind/agent_runtime/__init__.py`
+  - `alphamind/agent_runtime/runtime.py`
+  - `alphamind/agent_runtime/router.py`
+  - `alphamind/agent_runtime/session.py`
+  - `alphamind/agent_runtime/memory.py`
+  - `alphamind/agent_runtime/context/__init__.py`
+  - `alphamind/agent_runtime/context/types.py`
+  - `alphamind/agent_runtime/context/manager.py`
+  - `alphamind/agent_runtime/context/providers/__init__.py`
+  - `alphamind/agent_runtime/context/providers/page.py`
+  - `alphamind/agent_runtime/context/providers/report.py`
+  - `alphamind/agent_runtime/context/providers/session.py`
+  - `alphamind/agent_runtime/context/providers/task.py`
+  - `alphamind/agent_runtime/context/providers/user.py`
+  - `alphamind/agent_runtime/context/providers/memory.py`
+  - `alphamind/agent_runtime/tools/__init__.py`
+  - `alphamind/agent_runtime/tools/base.py`
+  - `alphamind/agent_runtime/tools/registry.py`
+  - `alphamind/agent_runtime/skills/__init__.py`
+  - `alphamind/agent_runtime/skills/base.py`
+  - `alphamind/agent_runtime/skills/registry.py`
+  - `alphamind/agent_runtime/mcp/__init__.py`
+  - `alphamind/agent_runtime/mcp/adapter.py`
+  - `tests/server/test_agent_runtime.py`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/task_plan.md`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/progress.md`
+- Test results:
+  - RED: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_agent_runtime.py -v` -> failed with `ModuleNotFoundError: No module named 'alphamind.agent_runtime'`.
+  - GREEN: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_agent_runtime.py -v` -> 2 passed in 0.01s.
+  - Required regression: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py tests/server/test_report_service.py tests/server/test_research_service.py tests/server/test_research_api.py tests/server/test_agent_runtime.py -q` -> 29 passed, 1 warning in 1.01s.
+- Next recommended action:
+  - Start Phase 5 / Task 7: add `ReportSummaryTool`, `DeepResearchTool`, `tests/server/test_agent_tools.py`, and AgentService runtime wiring.
+
 ## 5-Question Reboot Check
 
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 4 FastAPI routes and Task 5 quality review plus re-review fix complete; required verification passed and ready for commit |
-| Where am I going? | Phase 5: Agent Runtime core and tool registry |
+| Where am I? | Phase 5 Task 6 Agent Runtime core and tool registry complete; Task 7 has not started |
+| Where am I going? | Phase 5 Task 7: wire ReportSummaryTool and DeepResearchTool into AgentService |
 | What's the goal? | Build the Phase 1 AlphaMind MVP workbench and Agent Runtime foundation |
 | What have I learned? | See `findings.md` |
-| What have I done? | Created scoped planning-with-files tracking files, completed Task 1 backend service skeleton, completed Task 2 SQLite persistence layer, completed Task 3/4 report and research service layer, fixed Phase 3 code-quality review findings, completed Task 5 FastAPI routes, and fixed Task 5 quality review/re-review findings |
+| What have I done? | Created scoped planning-with-files tracking files, completed Task 1 backend service skeleton, completed Task 2 SQLite persistence layer, completed Task 3/4 report and research service layer, fixed Phase 3 code-quality review findings, completed Task 5 FastAPI routes, fixed Task 5 quality review/re-review findings, and completed Task 6 Agent Runtime core |
 
 ---
 
