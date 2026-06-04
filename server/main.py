@@ -9,6 +9,7 @@ from server.api import agent, reports, research, runtime
 from server.core.config import get_settings
 from server.db.connection import init_db
 from server.db.repositories import upsert_default_identity
+from server.services.agent_service import AgentService
 from server.services.research_service import ResearchService
 
 
@@ -18,7 +19,12 @@ def create_app(research_service: ResearchService | None = None) -> FastAPI:
     upsert_default_identity(settings.database_path)
 
     app = FastAPI(title="AlphaMind Workbench API")
+    app.state.database_path = settings.database_path
     app.state.research_service = research_service or ResearchService(settings.database_path)
+    app.state.agent_service = AgentService(
+        settings.database_path,
+        research_service=app.state.research_service,
+    )
 
     app.add_middleware(
         CORSMiddleware,

@@ -171,6 +171,12 @@ def create_agent_session(db_path: Path | str, title: str = "默认会话") -> di
     return _dict(row)
 
 
+def get_agent_session(db_path: Path | str, session_id: str) -> dict[str, Any]:
+    with connect(db_path) as conn:
+        row = conn.execute("SELECT * FROM agent_sessions WHERE id = ?", (session_id,)).fetchone()
+    return _dict(row)
+
+
 def add_agent_message(
     db_path: Path | str,
     session_id: str,

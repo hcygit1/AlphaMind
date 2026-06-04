@@ -41,6 +41,8 @@ def get_task(task_id: str, request: Request) -> dict:
 @router.get("/tasks/{task_id}/events")
 async def task_events(task_id: str, request: Request) -> StreamingResponse:
     service = _service(request)
+    if not service.get_task(task_id):
+        raise HTTPException(status_code=404, detail="Task not found")
 
     async def event_stream():
         sent = 0

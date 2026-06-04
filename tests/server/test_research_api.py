@@ -10,6 +10,7 @@ class FakeResearchService:
     def __init__(self, fail_create: bool = False):
         self.fail_create = fail_create
         self.events: dict[str, list[dict]] = {}
+        self.tasks: dict[str, dict] = {}
         self.started_tasks: list[str] = []
         self.task_status = "completed"
 
@@ -23,6 +24,7 @@ class FakeResearchService:
             "status": "pending",
             "progress_stage": None,
         }
+        self.tasks[task["id"]] = task
         self.events[task["id"]] = [
             {
                 "event": "research_progress",
@@ -40,12 +42,10 @@ class FakeResearchService:
         return None
 
     def get_task(self, task_id: str):
-        return {
-            "id": task_id,
-            "ticker": "300750",
-            "trade_date": "2026-06-03",
-            "status": self.task_status,
-        }
+        task = self.tasks.get(task_id)
+        if not task:
+            return {}
+        return {**task, "status": self.task_status}
 
     def get_events(self, task_id: str):
         return self.events.get(task_id, [])
@@ -57,7 +57,7 @@ def client(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("ALPHAMIND_DB_PATH", str(db_path))
     service = FakeResearchService()
     app = create_app(research_service=service)
-    return TestClient(app), service
+    return TestClient(app, raise_server_exceptions=False), service
 
 
 def test_research_report_agent_and_context_routes(client):
@@ -153,3 +153,40 @@ def test_research_events_stream_uses_injected_shared_service(client):
     assert "event: research_progress" in body
     assert "任务已创建" in body
     assert "深度投研完成" in body
+
+
+def test_unknown_research_events_task_returns_404(client):
+    test_client, _service = client
+
+    response = test_client.get("/api/research/tasks/task_missing/events")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Task not found"
+
+
+def test_invalid_agent_session_send_message_returns_404(client):
+    test_client, _service = client
+
+    response = test_client.post(
+        "/api/agent/sessions/session_missing/messages",
+        json={"content": "请分析当前页面"},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Agent session not found"
+
+
+def test_invalid_page_context_session_returns_404(client):
+    test_client, _service = client
+
+    response = test_client.put(
+        "/api/runtime/page-context",
+        json={
+            "session_id": "session_missing",
+            "page": "deep_research",
+            "context": {"ticker": "300750", "trade_date": "2026-06-03"},
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Agent session not found"

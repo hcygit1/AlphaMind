@@ -60,6 +60,7 @@ Each agent must read this file, `findings.md`, `progress.md`, the implementation
 - [x] Execute implementation plan Task 5
 - [x] Verify API tests and app factory tests
 - [x] Commit `feat: 添加工作台API路由` (`aedcf1c`)
+- [x] Address Task 5 quality review: unknown research SSE tasks and invalid agent/runtime sessions return 404, and AgentService is shared through app state with the injected research service
 - **Status:** complete
 
 ### Phase 5: Agent Runtime And Tools
@@ -110,6 +111,7 @@ Each agent must read this file, `findings.md`, `progress.md`, the implementation
 | Expected RED failure: `ModuleNotFoundError: No module named 'server.services'` | 1 | Added `server/services/__init__.py` and `server/services/report_service.py` |
 | Expected RED failure: `ModuleNotFoundError: No module named 'server.services.research_service'` | 1 | Added `server/services/research_service.py` |
 | Expected Phase 3 quality RED failures: signal extraction, atomic task creation helper, service helper usage, and default-runner summary consistency | 1 | Reused `parse_rating`, added `create_research_task_if_none_active` with `BEGIN IMMEDIATE`, updated `ResearchService.create_task`, and reused `extract_summary` |
+| Task 5 quality RED exposed an unknown task SSE loop and missing shared AgentService app state | 1 | Added route-level existence checks, repository/session service lookup, and `app.state.agent_service` initialized with shared `research_service` |
 
 ## Handoff Checklist
 

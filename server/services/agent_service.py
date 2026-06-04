@@ -4,15 +4,24 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from server.db.repositories import add_agent_message, create_agent_session, list_agent_messages
+from server.db.repositories import (
+    add_agent_message,
+    create_agent_session,
+    get_agent_session,
+    list_agent_messages,
+)
 
 
 class AgentService:
-    def __init__(self, db_path: Path | str):
+    def __init__(self, db_path: Path | str, research_service=None):
         self.db_path = Path(db_path)
+        self.research_service = research_service
 
     def create_session(self, title: str) -> dict:
         return create_agent_session(self.db_path, title=title)
+
+    def get_session(self, session_id: str) -> dict:
+        return get_agent_session(self.db_path, session_id)
 
     def list_messages(self, session_id: str) -> list[dict]:
         return list_agent_messages(self.db_path, session_id)

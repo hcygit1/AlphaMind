@@ -45,6 +45,9 @@
 | Report signal extraction can conflict with final decision prose | `server.services.report_service.extract_signal()` must delegate to `alphamind.agents.utils.rating.parse_rating()` so explicit `Rating: X` labels win over earlier rating words in prose |
 | Service-level active task checks are not atomic | `ResearchService.create_task()` must call repository-level `create_research_task_if_none_active()`, which uses `BEGIN IMMEDIATE` to check pending/running tasks and insert in one SQLite transaction |
 | Runner-created report summaries must match indexed report summaries | `default_runner()` should reuse `extract_summary(final_state)` instead of slicing `final_trade_decision` directly |
+| Unknown research SSE task IDs must not enter an empty streaming loop | `GET /api/research/tasks/{task_id}/events` now checks `ResearchService.get_task()` before creating the `StreamingResponse` and returns HTTP 404 when absent |
+| Agent message and page-context writes must validate session existence before SQLite writes | Added `get_agent_session()` and `AgentService.get_session()` so routes return HTTP 404 instead of surfacing SQLite foreign key failures as 500 |
+| Agent routes need the same shared research service that the app exposes for SSE | `create_app()` now builds `app.state.agent_service` with the injected/shared `app.state.research_service`; agent routes read service instances from request app state |
 
 ## Resources
 
