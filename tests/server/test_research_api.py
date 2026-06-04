@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from server.db.repositories import upsert_report
 from server.main import create_app
 
 
@@ -199,3 +200,84 @@ def test_invalid_page_context_session_returns_404(client):
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Agent session not found"
+
+
+def test_agent_message_returns_report_summary_tool_card(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("ALPHAMIND_DB_PATH", str(tmp_path / "test.sqlite3"))
+    app = create_app(research_service=FakeResearchService())
+    test_client = TestClient(app, raise_server_exceptions=False)
+    state_path = tmp_path / "state.json"
+    state_path.write_text('{"final_trade_decision":"**Rating**: Hold"}', encoding="utf-8")
+    report = upsert_report(
+        app.state.database_path,
+        "300750",
+        "2026-06-03",
+        "Hold",
+        "宁德时代报告摘要",
+        str(state_path),
+    )
+    session = test_client.post("/api/agent/sessions", json={"title": "报告会话"}).json()
+    context_response = test_client.put(
+        "/api/runtime/page-context",
+        json={
+            "session_id": session["id"],
+            "page": "report_detail",
+            "context": {"active_report_id": report["id"]},
+        },
+    )
+    assert context_response.status_code == 200
+
+    response = test_client.post(
+        f"/api/agent/sessions/{session['id']}/messages",
+        json={"content": "总结报告"},
+    )
+
+    assert response.status_code == 200
+    assistant = response.json()
+    assert "宁德时代报告摘要" in assistant["content"]
+    assert assistant["tool_cards"] == [
+        {
+            "type": "report_summary",
+            "status": "completed",
+            "payload": {"report_id": report["id"]},
+        }
+    ]
+
+
+def test_agent_message_uses_injected_research_service_for_deep_research(
+    tmp_path: Path,
+    monkeypatch,
+):
+    monkeypatch.setenv("ALPHAMIND_DB_PATH", str(tmp_path / "test.sqlite3"))
+    service = FakeResearchService()
+    app = create_app(research_service=service)
+    test_client = TestClient(app, raise_server_exceptions=False)
+    session = test_client.post("/api/agent/sessions", json={"title": "投研会话"}).json()
+    context_response = test_client.put(
+        "/api/runtime/page-context",
+        json={
+            "session_id": session["id"],
+            "page": "deep_research",
+            "context": {"ticker": "300750", "trade_date": "2026-06-03"},
+        },
+    )
+    assert context_response.status_code == 200
+
+    response = test_client.post(
+        f"/api/agent/sessions/{session['id']}/messages",
+        json={"content": "帮我做一次深度投研"},
+    )
+
+    assert response.status_code == 200
+    assert service.started_tasks == ["task_1"]
+    assert response.json()["tool_cards"] == [
+        {
+            "type": "deep_research",
+            "status": "accepted",
+            "payload": {
+                "task_id": "task_1",
+                "ticker": "300750",
+                "trade_date": "2026-06-03",
+            },
+        }
+    ]

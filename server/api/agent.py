@@ -33,15 +33,4 @@ def send_message(session_id: str, payload: AgentMessageCreate, request: Request)
     service = _service(request)
     if not service.get_session(session_id):
         raise HTTPException(status_code=404, detail="Agent session not found")
-    service.add_user_message(session_id, payload.content)
-    assistant = service.add_assistant_message(
-        session_id,
-        "我已经收到你的问题。Agent Runtime 工具调用将在后续任务接入。",
-        [],
-    )
-    return {
-        "message_id": assistant["id"],
-        "role": "assistant",
-        "content": assistant["content"],
-        "tool_cards": [],
-    }
+    return service.handle_message(session_id, payload.content)

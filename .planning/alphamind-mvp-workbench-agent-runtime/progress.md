@@ -433,15 +433,50 @@
 - Next recommended action:
   - Re-run Task 6 code-quality review or proceed to Task 7 after review approval.
 
+### Phase 5 Task 7: Agent Tools Wiring
+
+- **Status:** complete
+- **Started:** 2026-06-04 10:30 CST
+- **Completed:** 2026-06-04 10:38 CST
+- Actions taken:
+  - Read the active planning files, implementation plan Task 7, required server/runtime files, existing API/runtime tests, and `git status --short` before editing.
+  - Created `tests/server/test_agent_tools.py` first with direct coverage for `ReportSummaryTool` and `DeepResearchTool`, including failed results for missing report/ticker/date context.
+  - Extended `tests/server/test_research_api.py` with POST message coverage for `总结报告` returning a `report_summary` tool card and `帮我做一次深度投研` using the injected/shared `research_service` to create/start a task and return a `deep_research` tool card.
+  - Confirmed RED before production changes: missing `alphamind.agent_runtime.tools.deep_research` and `report_summary` modules.
+  - Added MVP-only `ReportSummaryTool` and `DeepResearchTool`.
+  - Wired `AgentService.handle_message()` to persist the user message, read current page context, pass recent messages into `AgentContext`, register the two tools in `ToolRegistry`, call `AgentRuntime`, persist the assistant response and tool cards, and return the API payload.
+  - Kept `AgentService` on the injected/shared `research_service`, with fallback to `ResearchService(self.db_path)` only when no service is injected.
+  - Updated the Agent POST message route to call `AgentService.handle_message()`.
+  - Investigated one expected test adjustment: `请分析当前页面` remains chat fallback under the Task 6 router; Task 7 deep research API coverage uses the explicit `帮我做一次深度投研` prompt.
+- Files created/modified:
+  - `alphamind/agent_runtime/tools/deep_research.py`
+  - `alphamind/agent_runtime/tools/report_summary.py`
+  - `server/api/agent.py`
+  - `server/services/agent_service.py`
+  - `tests/server/test_agent_tools.py`
+  - `tests/server/test_research_api.py`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/task_plan.md`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/findings.md`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/progress.md`
+- Test results:
+  - RED: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_agent_tools.py tests/server/test_research_api.py -q` -> collection failed with `ModuleNotFoundError: No module named 'alphamind.agent_runtime.tools.deep_research'`.
+  - GREEN: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_agent_tools.py tests/server/test_research_api.py -q` -> 13 passed, 1 warning in 0.74s.
+  - Required runtime/API regression: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_agent_tools.py tests/server/test_agent_runtime.py tests/server/test_research_api.py -q` -> 19 passed, 1 warning in 0.62s.
+  - Required backend regression: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py tests/server/test_report_service.py tests/server/test_research_service.py tests/server/test_research_api.py tests/server/test_agent_runtime.py tests/server/test_agent_tools.py -q` -> 39 passed, 1 warning in 0.71s.
+- Commit:
+  - `feat: 接入Agent投研工具` (hash reported in final handoff)
+- Next recommended action:
+  - Start Phase 6 / Task 8: Vite workbench frontend shell.
+
 ## 5-Question Reboot Check
 
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 5 Task 6 Agent Runtime core and tool registry complete, including code-quality review fix; Task 7 has not started |
-| Where am I going? | Phase 5 Task 7: wire ReportSummaryTool and DeepResearchTool into AgentService |
+| Where am I? | Phase 5 Task 7 Agent tools wiring complete |
+| Where am I going? | Phase 6 Task 8: Vite workbench frontend shell |
 | What's the goal? | Build the Phase 1 AlphaMind MVP workbench and Agent Runtime foundation |
 | What have I learned? | See `findings.md` |
-| What have I done? | Created scoped planning-with-files tracking files, completed Task 1 backend service skeleton, completed Task 2 SQLite persistence layer, completed Task 3/4 report and research service layer, fixed Phase 3 code-quality review findings, completed Task 5 FastAPI routes, fixed Task 5 quality review/re-review findings, completed Task 6 Agent Runtime core, and fixed Task 6 route-priority review finding |
+| What have I done? | Created scoped planning-with-files tracking files, completed Task 1 backend service skeleton, completed Task 2 SQLite persistence layer, completed Task 3/4 report and research service layer, fixed Phase 3 code-quality review findings, completed Task 5 FastAPI routes, fixed Task 5 quality review/re-review findings, completed Task 6 Agent Runtime core, fixed Task 6 route-priority review finding, and completed Task 7 Agent tools wiring |
 
 ---
 
