@@ -67,6 +67,7 @@ Each agent must read this file, `findings.md`, `progress.md`, the implementation
 ### Phase 5: Agent Runtime And Tools
 
 - [x] Execute implementation plan Task 6
+- [x] Address Task 6 code quality review: deep research intent now takes precedence over generic report summary keywords
 - [ ] Execute implementation plan Task 7
 - [x] Verify Agent Runtime core tests
 - [ ] Verify Agent Runtime tool tests
@@ -115,6 +116,7 @@ Each agent must read this file, `findings.md`, `progress.md`, the implementation
 | Expected Phase 3 quality RED failures: signal extraction, atomic task creation helper, service helper usage, and default-runner summary consistency | 1 | Reused `parse_rating`, added `create_research_task_if_none_active` with `BEGIN IMMEDIATE`, updated `ResearchService.create_task`, and reused `extract_summary` |
 | Task 5 quality RED exposed an unknown task SSE loop and missing shared AgentService app state | 1 | Added route-level existence checks, repository/session service lookup, and `app.state.agent_service` initialized with shared `research_service` |
 | Expected Task 6 RED failure: `ModuleNotFoundError: No module named 'alphamind.agent_runtime'` | 1 | Added the minimal `alphamind.agent_runtime` package with runtime orchestration, intent routing, context types, tool registry, and Phase 1 extension-point stubs |
+| Task 6 review RED failure: mixed report-analysis prompt routed to `report_summary` before `deep_research` | 1 | Added branch coverage and prioritized explicit deep research keywords before generic report summary keywords |
 
 ## Handoff Checklist
 

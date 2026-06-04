@@ -49,6 +49,7 @@
 | Agent message and page-context writes must validate session existence before SQLite writes | Added `get_agent_session()` and `AgentService.get_session()` so routes return HTTP 404 instead of surfacing SQLite foreign key failures as 500 |
 | Agent routes need the same shared research service that the app exposes for SSE | `create_app()` now builds `app.state.agent_service` with the injected/shared `app.state.research_service`; agent routes read service instances from request app state |
 | Agent session read routes must match write-route session semantics | `GET /api/agent/sessions/{session_id}` now checks session existence and returns HTTP 404 for missing sessions instead of returning an empty message list |
+| Agent Runtime intent routing must prioritize explicit deep research requests | Messages containing deep-analysis intent such as `分析一下` or `深度分析` should route to `deep_research` even when they also mention `报告`, so Task 7 does not dispatch mixed report-analysis prompts to `report_summary` |
 
 ## Resources
 

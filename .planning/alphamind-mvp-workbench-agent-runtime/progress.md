@@ -43,6 +43,7 @@
 - Agent message writes and runtime page-context writes now return HTTP 404 for missing sessions before repository writes.
 - Agent message reads now also return HTTP 404 for missing sessions before listing messages.
 - Agent Runtime core now exists under `alphamind/agent_runtime/` with context types, context manager/provider stubs, intent router, runtime dispatch, tool registry, short-term memory shell, skill registry shell, MCP adapter shell, and session dataclass.
+- Task 6 code-quality review fix updates intent routing so explicit deep research prompts win over generic report-summary keywords.
 - Task 6 intentionally did not add `ReportSummaryTool`, `DeepResearchTool`, `tests/server/test_agent_tools.py`, or `AgentService` runtime wiring; those remain Task 7.
 - Worktree path: `/Users/hcy/Desktop/file/AlphaMind/.worktrees/mvp-workbench-agent-runtime`
 - Branch: `feat/mvp-workbench-agent-runtime`
@@ -96,6 +97,9 @@
 | Task 6 RED test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_agent_runtime.py -v` | Fails because `alphamind.agent_runtime` is missing | Failed with `ModuleNotFoundError: No module named 'alphamind.agent_runtime'` | pass |
 | Task 6 GREEN test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_agent_runtime.py -v` | Agent Runtime core tests pass | 2 passed in 0.01s | pass |
 | Task 6 required backend regression | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py tests/server/test_report_service.py tests/server/test_research_service.py tests/server/test_research_api.py tests/server/test_agent_runtime.py -q` | Current backend server scope plus Agent Runtime tests pass | 29 passed, 1 warning in 1.01s | pass |
+| Task 6 review RED test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_agent_runtime.py -q` | Mixed report-analysis prompt exposes wrong routing priority | 1 failed, 5 passed: `请分析一下报告` routed to `report_summary` | pass |
+| Task 6 review GREEN test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_agent_runtime.py -q` | Agent Runtime branch coverage passes | 6 passed in 0.01s | pass |
+| Task 6 review backend regression | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py tests/server/test_report_service.py tests/server/test_research_service.py tests/server/test_research_api.py tests/server/test_agent_runtime.py -q` | Current backend server scope plus expanded Agent Runtime tests pass | 33 passed, 1 warning in 1.05s | pass |
 
 ## Error Log
 
@@ -114,6 +118,7 @@
 | 2026-06-04 09:44 CST | Expected Task 5 quality RED failures: missing `app.state.agent_service`, agent route bypassed app state, and unknown SSE task entered an empty stream loop | 1 | Added shared `AgentService` app-state injection, route-level session/task existence checks, and repository session lookup |
 | 2026-06-04 10:07 CST | Task 5 quality re-review found `GET /api/agent/sessions/{session_id}` returned 200 with empty messages for missing sessions | 1 | Added a regression test and made the read route return HTTP 404 using `AgentService.get_session()` |
 | 2026-06-04 10:03 CST | Expected Task 6 RED failure: `ModuleNotFoundError: No module named 'alphamind.agent_runtime'` | 1 | Added minimal Agent Runtime core package and reran target and backend regression tests |
+| 2026-06-04 10:27 CST | Task 6 review found mixed report-analysis prompts route to `report_summary` before `deep_research` | 1 | Added routing branch regressions and prioritized deep research keywords before generic report summary keywords |
 
 ### Phase 1: Backend Dependencies And Server Skeleton
 
@@ -405,15 +410,38 @@
 - Next recommended action:
   - Start Phase 5 / Task 7: add `ReportSummaryTool`, `DeepResearchTool`, `tests/server/test_agent_tools.py`, and AgentService runtime wiring.
 
+### Task 6 Code Quality Review Fix
+
+- **Status:** complete
+- **Started:** 2026-06-04 10:27 CST
+- **Completed:** 2026-06-04 10:27 CST
+- Actions taken:
+  - Verified the review finding against `alphamind/agent_runtime/router.py`: generic `报告` matching happened before deep-analysis keywords.
+  - Expanded `tests/server/test_agent_runtime.py` before production changes to cover mixed report-analysis prompts, normal deep research prompts, chat fallback, unregistered-tool fallback, and full `tool_cards` structure.
+  - Confirmed RED: mixed prompt `请分析一下报告` routed to `report_summary` instead of `deep_research`.
+  - Updated `IntentRouter` to prioritize explicit deep research keywords before generic report summary keywords.
+  - Did not add Task 7 tools, AgentService runtime wiring, or frontend changes.
+- Files modified:
+  - `alphamind/agent_runtime/router.py`
+  - `tests/server/test_agent_runtime.py`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/findings.md`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/progress.md`
+- Test results:
+  - RED: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_agent_runtime.py -q` -> 1 failed, 5 passed in 0.04s.
+  - GREEN: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_agent_runtime.py -q` -> 6 passed in 0.01s.
+  - Required regression: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py tests/server/test_report_service.py tests/server/test_research_service.py tests/server/test_research_api.py tests/server/test_agent_runtime.py -q` -> 33 passed, 1 warning in 1.05s.
+- Next recommended action:
+  - Re-run Task 6 code-quality review or proceed to Task 7 after review approval.
+
 ## 5-Question Reboot Check
 
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 5 Task 6 Agent Runtime core and tool registry complete; Task 7 has not started |
+| Where am I? | Phase 5 Task 6 Agent Runtime core and tool registry complete, including code-quality review fix; Task 7 has not started |
 | Where am I going? | Phase 5 Task 7: wire ReportSummaryTool and DeepResearchTool into AgentService |
 | What's the goal? | Build the Phase 1 AlphaMind MVP workbench and Agent Runtime foundation |
 | What have I learned? | See `findings.md` |
-| What have I done? | Created scoped planning-with-files tracking files, completed Task 1 backend service skeleton, completed Task 2 SQLite persistence layer, completed Task 3/4 report and research service layer, fixed Phase 3 code-quality review findings, completed Task 5 FastAPI routes, fixed Task 5 quality review/re-review findings, and completed Task 6 Agent Runtime core |
+| What have I done? | Created scoped planning-with-files tracking files, completed Task 1 backend service skeleton, completed Task 2 SQLite persistence layer, completed Task 3/4 report and research service layer, fixed Phase 3 code-quality review findings, completed Task 5 FastAPI routes, fixed Task 5 quality review/re-review findings, completed Task 6 Agent Runtime core, and fixed Task 6 route-priority review finding |
 
 ---
 
