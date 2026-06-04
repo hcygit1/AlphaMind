@@ -24,19 +24,24 @@
 
 ## Current Handoff
 
-- Last completed phase: Phase 3 quality review fix.
+- Last completed phase: Phase 4 FastAPI Routes.
 - Task 1 implementation commit: `0c15777 feat: 添加FastAPI服务骨架`.
 - Task 2 implementation commit: `4192a37 feat: 添加SQLite持久化层`.
 - Task 3 and Task 4 implementation commit: `3524a8e feat: 添加投研服务层`.
+- Task 5 implementation commit: `aedcf1c feat: 添加工作台API路由`.
 - Backend service skeleton is in place with FastAPI app factory, CORS setup, and `/api/health`.
 - SQLite persistence layer is in place with schema initialization, default identity upsert, research task/report/session/message/page-context repositories, shared Pydantic schemas, and `list_active_research_tasks` returning pending/running tasks.
 - Report service is in place with legacy state JSON indexing, section extraction, signal extraction, summary extraction, and report detail assembly.
 - Research service is in place with task creation, synchronous/background execution helpers, fake-runner-testable orchestration, repository-backed active task gating, report creation, and in-memory SSE event buffering.
 - Phase 3 quality fixes are in place: report signal extraction reuses shared `parse_rating`, research task creation uses a repository-level `BEGIN IMMEDIATE` active-task gate, and `default_runner` summary reuses `extract_summary`.
+- FastAPI routes are in place for research tasks/SSE, reports, Agent sessions/messages, and runtime page context.
+- `create_app(research_service=...)` now initializes the database/default identity, stores a shared `app.state.research_service`, registers the Task 5 routers, and preserves `/api/health`.
+- Research API maps service `RuntimeError` active-task conflicts to HTTP 409.
+- Agent API remains a Task 5 placeholder only: it stores user and assistant messages and returns `tool_cards: []`; Agent Runtime/tool execution remains untouched for Task 6+.
 - Worktree path: `/Users/hcy/Desktop/file/AlphaMind/.worktrees/mvp-workbench-agent-runtime`
 - Branch: `feat/mvp-workbench-agent-runtime`
-- Next recommended action: start Phase 4 / implementation plan Task 5 in a separate worker, adding FastAPI routes on top of the completed service layer.
-- Before starting Phase 4, read:
+- Next recommended action: start Phase 5 / implementation plan Task 6 and Task 7 in a separate worker, adding Agent Runtime core and tool registry.
+- Before starting Phase 5, read:
   - `.planning/alphamind-mvp-workbench-agent-runtime/task_plan.md`
   - `.planning/alphamind-mvp-workbench-agent-runtime/findings.md`
   - `.planning/alphamind-mvp-workbench-agent-runtime/progress.md`
@@ -69,6 +74,10 @@
 | Phase 3 quality GREEN test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_report_service.py tests/server/test_research_service.py tests/server/test_db_repositories.py -v` | Report, research service, and repository quality fixes pass | 17 passed in 1.24s | pass |
 | Phase 3 quality required test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_report_service.py tests/server/test_research_service.py tests/server/test_db_repositories.py -v` | Required report/research/repository test command passes | 17 passed in 0.90s | pass |
 | Phase 3 quality required regression | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py tests/server/test_report_service.py tests/server/test_research_service.py -v` | Required app factory + repository + report + research test command passes | 18 passed, 1 warning in 0.72s | pass |
+| Task 5 RED test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_research_api.py -v` | Fails because `create_app` does not support injected fake research service yet | 1 failed, 2 errors, 1 warning: `TypeError: create_app() got an unexpected keyword argument 'research_service'` | pass |
+| Task 5 GREEN test | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_research_api.py -v` | Research/report/agent/runtime API tests pass with injected fake research service | 3 passed, 1 warning in 0.92s | pass |
+| Task 5 required regression | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_research_api.py tests/server/test_app_factory.py -v` | API routes and app factory tests pass | 4 passed, 1 warning in 0.71s | pass |
+| Task 5 backend current-scope regression | `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py tests/server/test_report_service.py tests/server/test_research_service.py tests/server/test_research_api.py -q` | Current backend server test scope passes | 21 passed, 1 warning in 0.63s | pass |
 
 ## Error Log
 
@@ -83,6 +92,7 @@
 | 2026-06-03 18:01 CST | Expected RED failure: `ModuleNotFoundError: No module named 'server.services'` | 1 | Added `server/services/__init__.py` and `server/services/report_service.py`, then reran target test successfully |
 | 2026-06-03 18:04 CST | Expected RED failure: `ModuleNotFoundError: No module named 'server.services.research_service'` | 1 | Added `server/services/research_service.py`, then reran target test successfully |
 | 2026-06-03 18:09 CST | Expected Phase 3 quality RED failures: `extract_signal` returned `Buy` for explicit `Sell`, no-rating fallback returned `N/A`, repository atomic helper was absent, service did not expose/use the helper, and `default_runner` summary included the full decision prefix | 1 | Reused shared `parse_rating`, added repository `create_research_task_if_none_active()` with `BEGIN IMMEDIATE`, updated `ResearchService.create_task()`, and reused `extract_summary()` in `default_runner` |
+| 2026-06-04 09:25 CST | Expected Task 5 RED failure: `create_app()` did not accept injected `research_service` | 1 | Added Task 5 FastAPI routers, `AgentService`, and app factory service injection/router registration |
 
 ### Phase 1: Backend Dependencies And Server Skeleton
 
@@ -227,15 +237,49 @@
 - Next recommended action:
   - Commit the Phase 3 quality fix.
 
+### Phase 4: FastAPI Routes
+
+- **Status:** complete
+- **Started:** 2026-06-04 09:25 CST
+- **Completed:** 2026-06-04 09:25 CST
+- Actions taken:
+  - Created `tests/server/test_research_api.py` first with an injected `FakeResearchService`.
+  - Confirmed RED with `create_app(research_service=...)` unsupported.
+  - Added research task routes, including shared-service SSE events and `RuntimeError` to HTTP 409 mapping.
+  - Added report list/detail routes backed by SQLite repositories and report service.
+  - Added runtime page-context read/write routes backed by SQLite repositories.
+  - Added `AgentService` and Agent session/message routes with Task 5 placeholder assistant replies only.
+  - Updated `create_app` to initialize the database/default identity, store `app.state.research_service`, register research/reports/agent/runtime routers, and preserve `/api/health`.
+  - Did not implement Task 6+ Agent Runtime or tool execution.
+- Files created/modified:
+  - `server/api/research.py`
+  - `server/api/reports.py`
+  - `server/api/runtime.py`
+  - `server/api/agent.py`
+  - `server/services/agent_service.py`
+  - `server/main.py`
+  - `tests/server/test_research_api.py`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/task_plan.md`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/progress.md`
+- Test results:
+  - RED: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_research_api.py -v` -> 1 failed, 2 errors, 1 warning; `TypeError: create_app() got an unexpected keyword argument 'research_service'`.
+  - GREEN: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_research_api.py -v` -> 3 passed, 1 warning in 0.92s.
+  - Required regression: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_research_api.py tests/server/test_app_factory.py -v` -> 4 passed, 1 warning in 0.71s.
+  - Current backend scope regression: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py tests/server/test_report_service.py tests/server/test_research_service.py tests/server/test_research_api.py -q` -> 21 passed, 1 warning in 0.63s.
+- Commit:
+  - `aedcf1c feat: 添加工作台API路由`
+- Next recommended action:
+  - Start Phase 5 / implementation plan Task 6 and Task 7 in a separate worker.
+
 ## 5-Question Reboot Check
 
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 3 quality review fix complete; ready for Phase 4 |
-| Where am I going? | Phase 4: FastAPI routes |
+| Where am I? | Phase 4 FastAPI routes complete; ready for Phase 5 |
+| Where am I going? | Phase 5: Agent Runtime core and tool registry |
 | What's the goal? | Build the Phase 1 AlphaMind MVP workbench and Agent Runtime foundation |
 | What have I learned? | See `findings.md` |
-| What have I done? | Created scoped planning-with-files tracking files, completed Task 1 backend service skeleton, completed Task 2 SQLite persistence layer, completed Task 3/4 report and research service layer, and fixed Phase 3 code-quality review findings |
+| What have I done? | Created scoped planning-with-files tracking files, completed Task 1 backend service skeleton, completed Task 2 SQLite persistence layer, completed Task 3/4 report and research service layer, fixed Phase 3 code-quality review findings, and completed Task 5 FastAPI routes |
 
 ---
 
