@@ -57,6 +57,7 @@
 | `npm audit` reports 2 moderate frontend findings for Vite 5 via esbuild | `npm audit fix --force` would install Vite 8.0.16, a breaking major upgrade outside Task 8. Current Task 8 keeps the approved Vite 5 plan and passes production build; revisit during a dedicated dependency update |
 | Task 8 static UI copy must avoid implementation-plan language | Visible frontend copy should describe product state, for example `暂无报告`, `无进行中的研究任务`, and `研究服务未就绪`; avoid exposing task numbers, API wiring, backend framework names, or phase labels in the user interface |
 | Agent orb should not stay focusable after the drawer opens | The Task 8 shell dynamically sets `aria-expanded`, links the orb with `aria-controls="agent-drawer"`, hides and removes it from keyboard navigation while open, and supports Escape to close the drawer |
+| Frontend Vite env globals are not declared in TypeScript | Task 9 keeps `VITE_API_BASE_URL` access locally typed inside `frontend/src/api/client.ts`; add a global `vite-env.d.ts` only if later frontend work needs wider `import.meta.env` usage |
 
 ## Resources
 

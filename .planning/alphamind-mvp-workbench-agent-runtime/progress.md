@@ -569,6 +569,40 @@
 - Next recommended action:
   - Re-run Task 8 UI/UX and code quality review. Proceed to Task 9 only after approval.
 
+### Phase 6 Task 9: Frontend Research and Reports API Wiring
+
+- **Status:** complete
+- **Started:** 2026-06-04 15:54 CST
+- **Completed:** 2026-06-04 15:54 CST
+- Actions taken:
+  - Read the active task plan, findings, progress log, implementation plan Task 9, frontend shell files, research/report pages, styles, backend research/report routes, shared schemas, and `git status --short`.
+  - Added `frontend/src/api/types.ts` and `frontend/src/api/client.ts` with only research task creation, reports list/detail, and research SSE URL helpers.
+  - Wired `DeepResearchPage` to create research tasks, disable form controls while creating, show near-form errors, open an EventSource for `research_progress`, update task status/stage/report id, record progress events, and close the stream on terminal task status or unmount.
+  - Wired `ReportsPage` to load the report list on entry and fetch report details only when a report is clicked.
+  - Added `ReportDetail` with section tabs, raw section details, and final-decision details behavior.
+  - Extended CSS for form errors, task status, report list/detail, tabs, raw `pre` content, loading state, and mobile single-column report layout.
+  - Did not add Agent session/message/page-context API helpers, did not modify `AgentDrawer` networking, and did not save current page context.
+- Files created/modified:
+  - `frontend/src/api/client.ts`
+  - `frontend/src/api/types.ts`
+  - `frontend/src/features/research/DeepResearchPage.tsx`
+  - `frontend/src/features/reports/ReportsPage.tsx`
+  - `frontend/src/features/reports/ReportDetail.tsx`
+  - `frontend/src/styles.css`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/task_plan.md`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/findings.md`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/progress.md`
+- Test results:
+  - Initial build: `cd frontend && npm run build` -> failed with `src/api/client.ts(3,30): error TS2339: Property 'env' does not exist on type 'ImportMeta'`.
+  - Fixed by locally narrowing `ImportMeta` in `frontend/src/api/client.ts`.
+  - Required build: `cd frontend && npm run build` -> TypeScript and Vite production build passed; Vite transformed 1589 modules and built in 997ms.
+  - Required copy scan: `rg -n "Task 9|后续任务|API 接入|FastAPI|Phase 1|前端 API|等待 API" frontend/src || true` -> no output.
+  - Local smoke: temporary Vite dev server at `http://127.0.0.1:5174/`; `curl -I` returned `HTTP/1.1 200 OK`; server was stopped afterward.
+- Commit:
+  - `feat: 接入投研和报告前端页面` (hash reported in final handoff)
+- Next recommended action:
+  - Start Phase 6 / Task 10 in a separate worker: connect Agent drawer messaging and page context APIs without changing the Task 9 research/report wiring.
+
 ## 5-Question Reboot Check
 
 | Question | Answer |

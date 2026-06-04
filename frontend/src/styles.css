@@ -253,6 +253,12 @@ select:focus-visible {
   border-color: #ded7c4;
 }
 
+.status-pill.danger {
+  color: #9b2c2c;
+  background: #fff0ed;
+  border-color: #f0c1b9;
+}
+
 .research-form {
   display: grid;
   gap: 14px;
@@ -323,6 +329,46 @@ select:focus-visible {
   cursor: not-allowed;
 }
 
+.form-error,
+.list-error {
+  margin: 0;
+  color: #9b2c2c;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.list-error {
+  padding: 12px 18px 0;
+}
+
+.task-status {
+  padding: 16px 18px 0;
+}
+
+.task-status dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.task-status dt {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.task-status dd {
+  min-width: 0;
+  margin: 3px 0 0;
+  color: var(--text-strong);
+  overflow-wrap: anywhere;
+}
+
+.progress-events {
+  padding-top: 16px;
+}
+
 .timeline {
   display: grid;
   gap: 16px;
@@ -357,7 +403,187 @@ select:focus-visible {
 }
 
 .reports-panel {
+  min-width: 0;
+}
+
+.reports-workspace {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: 16px;
   max-width: 1180px;
+}
+
+.report-list {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.report-list button {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 12px;
+  color: var(--text-body);
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.report-list button:hover:not(:disabled),
+.report-list button.active {
+  border-color: rgba(47, 111, 94, 0.46);
+  background: #f5faf7;
+}
+
+.report-list button:disabled {
+  opacity: 0.66;
+  cursor: progress;
+}
+
+.report-list strong {
+  color: var(--text-strong);
+}
+
+.report-list span,
+.report-list small {
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.report-list small {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.report-detail-shell,
+.report-detail {
+  min-width: 0;
+}
+
+.report-loading {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  padding: 24px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.report-detail-header {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.report-detail-header h2 {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 22px;
+  line-height: 1.25;
+}
+
+.report-detail-header span,
+.report-detail-header p {
+  color: var(--text-muted);
+}
+
+.report-detail-header p {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.tab-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.tab-row button {
+  min-height: 36px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 0 10px;
+  color: var(--text-body);
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.tab-row button.active {
+  color: #ffffff;
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.report-section {
+  padding: 18px;
+}
+
+.report-section h3 {
+  margin: 0 0 8px;
+  color: var(--text-strong);
+  font-size: 18px;
+}
+
+.report-section p {
+  margin: 0 0 14px;
+  color: var(--text-body);
+  line-height: 1.6;
+}
+
+.report-section details {
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: #fbfcfa;
+}
+
+.report-section details + details {
+  margin-top: 12px;
+}
+
+.report-section summary {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  color: var(--text-strong);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.report-section pre {
+  max-height: 460px;
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border-top: 1px solid var(--border-subtle);
+  padding: 14px;
+  color: #f4f7f2;
+  background: #202421;
+  line-height: 1.55;
+}
+
+.empty-detail {
+  padding: 18px;
+}
+
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .table-shell {
@@ -605,7 +831,8 @@ select:focus-visible {
   }
 
   .workspace-header,
-  .page-grid {
+  .page-grid,
+  .reports-workspace {
     display: grid;
     grid-template-columns: 1fr;
   }
