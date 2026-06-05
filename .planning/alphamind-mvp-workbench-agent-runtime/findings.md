@@ -63,6 +63,9 @@
 | Page context writes are best-effort frontend side effects | Current-page context sync should not block the primary research/report UI; first-version pages fire the save call without surfacing failures in the page body |
 | FastAPI health route is `/api/health` | Task 11 smoke should check `/api/health`; `/health` correctly returns 404 because no root health route is registered |
 | Browser automation was not available in the current tool surface during Task 11 | Vite smoke used HTTP checks for `/`, `/src/main.tsx`, and `/src/App.tsx`, plus production TypeScript/Vite build verification |
+| Final review found Reports API should use app state database path | Fixed in `b60f4cc`: report list/detail routes now read `request.app.state.database_path`, matching the app initialized database path |
+| Final review found ReportSummaryTool did not use the current active report tab | Fixed in `b60f4cc`: report summary now appends active tab section summary when `active_tab` is present in current page context |
+| Real deep-research runner still emits coarse SSE progress | The default runner emits task creation, task start, final PM/completed, and failure events; per-internal-agent stage events require deeper integration with `AlphaMindGraph` and remain a non-blocking enhancement beyond the concrete implementation plan example |
 
 ## Resources
 
