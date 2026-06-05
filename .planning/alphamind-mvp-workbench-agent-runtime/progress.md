@@ -660,15 +660,38 @@
 - Next recommended action:
   - Proceed to Phase 7 documentation and final smoke verification.
 
+### Phase 7 Task 11: Docs and Final Verification
+
+- **Status:** complete
+- **Started:** 2026-06-05 CST
+- **Completed:** 2026-06-05 09:40 CST
+- Actions taken:
+  - Read implementation plan Task 11, current migration doc, current git status, and relevant server/frontend smoke context.
+  - Appended the MVP workbench landing path to `docs/frontend-migration.md`, stating that the new main frontend starts in `frontend/`, the API starts in `server/`, and `web/` Streamlit stays as legacy for Phase 1.
+  - Kept Task 11 scoped to documentation and verification; no code behavior changes were made.
+  - Committed migration docs update.
+- Test results:
+  - Backend test suite: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server tests/test_signal_processing.py tests/test_ticker_symbol_handling.py -v` -> 54 passed, 1 warning in 1.70s.
+  - Frontend build: `cd frontend && npm run build` -> TypeScript and Vite production build passed; Vite transformed 1589 modules and built in 1.14s.
+  - FastAPI smoke: started `uvicorn server.main:app --host 127.0.0.1 --port 8000` with `ALPHAMIND_DB_PATH=/tmp/alphamind-task11-smoke.sqlite3`; `/api/health` returned 200 `{"status":"ok"}`, `/api/reports` returned 200 `[]`, and `POST /api/agent/sessions` returned 200 with a session id. The initial `/health` smoke returned 404 because the implemented route is `/api/health`.
+  - FastAPI shutdown: stopped PID 38510 and confirmed `curl` to `/api/health` returned `000`.
+  - Vite smoke: started `npm run dev -- --host 127.0.0.1 --port 5173`; `GET /` returned the Vite HTML with `#root` and `/src/main.tsx`, and `GET /src/main.tsx` plus `GET /src/App.tsx` both returned 200. Browser automation was not available in the current tool surface, so this smoke used HTTP checks plus the production build.
+  - Vite shutdown: sent Ctrl+C to the dev server and confirmed `curl` to `/` returned `000`.
+  - Pre-doc-commit git status: only `docs/frontend-migration.md` was modified.
+- Commit:
+  - `docs: 更新前端迁移路径` (`248bd6f`)
+- Next recommended action:
+  - Run final branch review and decide whether to merge the worktree branch back into the main checkout.
+
 ## 5-Question Reboot Check
 
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 6 Task 10 Agent drawer messaging and current page-context APIs complete |
-| Where am I going? | Phase 7 documentation and final smoke verification |
+| Where am I? | Phase 7 documentation and final verification complete |
+| Where am I going? | Final branch review / integration decision |
 | What's the goal? | Build the Phase 1 AlphaMind MVP workbench and Agent Runtime foundation |
 | What have I learned? | See `findings.md` |
-| What have I done? | Created scoped planning-with-files tracking files, completed Task 1 backend service skeleton, completed Task 2 SQLite persistence layer, completed Task 3/4 report and research service layer, fixed Phase 3 code-quality review findings, completed Task 5 FastAPI routes, fixed Task 5 quality review/re-review findings, completed Task 6 Agent Runtime core, fixed Task 6 route-priority review finding, completed Task 7 Agent tools wiring, fixed Task 7 active-task conflict handling, completed Task 8 Vite frontend shell, fixed Task 8 UI/UX review findings, completed Task 9 frontend research/report API wiring, and implemented Task 10 Agent drawer/page-context wiring |
+| What have I done? | Created scoped planning-with-files tracking files, completed Task 1 backend service skeleton, completed Task 2 SQLite persistence layer, completed Task 3/4 report and research service layer, fixed Phase 3 code-quality review findings, completed Task 5 FastAPI routes, fixed Task 5 quality review/re-review findings, completed Task 6 Agent Runtime core, fixed Task 6 route-priority review finding, completed Task 7 Agent tools wiring, fixed Task 7 active-task conflict handling, completed Task 8 Vite frontend shell, fixed Task 8 UI/UX review findings, completed Task 9 frontend research/report API wiring, completed Task 10 Agent drawer/page-context wiring, and completed Task 11 docs/final verification |
 
 ---
 

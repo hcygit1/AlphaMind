@@ -61,6 +61,8 @@
 | Same-tab Agent session creation does not trigger the browser `storage` event | Task 10 dispatches an `alphamind-agent-session-ready` custom event after persisting `alphamind_session_id`, so current-page context can sync immediately in the same tab |
 | Saved Agent session IDs can outlive a rebuilt local SQLite database | Task 10 retries one message send after creating a fresh Agent session when the backend returns `Agent session not found`, then re-dispatches the session-ready event so page context can resync |
 | Page context writes are best-effort frontend side effects | Current-page context sync should not block the primary research/report UI; first-version pages fire the save call without surfacing failures in the page body |
+| FastAPI health route is `/api/health` | Task 11 smoke should check `/api/health`; `/health` correctly returns 404 because no root health route is registered |
+| Browser automation was not available in the current tool surface during Task 11 | Vite smoke used HTTP checks for `/`, `/src/main.tsx`, and `/src/App.tsx`, plus production TypeScript/Vite build verification |
 
 ## Resources
 
