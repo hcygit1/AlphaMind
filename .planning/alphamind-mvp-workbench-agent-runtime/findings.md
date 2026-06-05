@@ -58,6 +58,9 @@
 | Task 8 static UI copy must avoid implementation-plan language | Visible frontend copy should describe product state, for example `暂无报告`, `无进行中的研究任务`, and `研究服务未就绪`; avoid exposing task numbers, API wiring, backend framework names, or phase labels in the user interface |
 | Agent orb should not stay focusable after the drawer opens | The Task 8 shell dynamically sets `aria-expanded`, links the orb with `aria-controls="agent-drawer"`, hides and removes it from keyboard navigation while open, and supports Escape to close the drawer |
 | Frontend Vite env globals are not declared in TypeScript | Task 9 keeps `VITE_API_BASE_URL` access locally typed inside `frontend/src/api/client.ts`; add a global `vite-env.d.ts` only if later frontend work needs wider `import.meta.env` usage |
+| Same-tab Agent session creation does not trigger the browser `storage` event | Task 10 dispatches an `alphamind-agent-session-ready` custom event after persisting `alphamind_session_id`, so current-page context can sync immediately in the same tab |
+| Saved Agent session IDs can outlive a rebuilt local SQLite database | Task 10 retries one message send after creating a fresh Agent session when the backend returns `Agent session not found`, then re-dispatches the session-ready event so page context can resync |
+| Page context writes are best-effort frontend side effects | Current-page context sync should not block the primary research/report UI; first-version pages fire the save call without surfacing failures in the page body |
 
 ## Resources
 

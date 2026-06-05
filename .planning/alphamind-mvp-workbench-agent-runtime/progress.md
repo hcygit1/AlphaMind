@@ -620,15 +620,55 @@
 - Next recommended action:
   - Start Phase 6 / Task 10: connect Agent drawer messaging and current page-context APIs.
 
+### Phase 6 Task 10: Agent Drawer Messaging and Current Page Context APIs
+
+- **Status:** complete
+- **Started:** 2026-06-05 CST
+- **Last updated:** 2026-06-05 09:28 CST
+- Actions taken:
+  - Read the active task plan, findings, progress log, implementation plan Task 10, current frontend diff, backend Agent routes, runtime page-context routes, API schemas, Agent service, and relevant backend route tests.
+  - Added Agent session/message/page-context client helpers and Agent response/session/tool-card types.
+  - Wired `AgentDrawer` to create or reuse a persisted Agent session, send user messages to the Agent API, render assistant responses and tool cards, show request errors, disable inputs while pending, and preserve Task 8 drawer accessibility behavior.
+  - Added a one-time stale-session recovery path: if a saved local session returns `Agent session not found`, create a fresh session, persist it, dispatch the same-tab session-ready event, and retry the message once.
+  - Wired `DeepResearchPage` to save current page context for ticker, trade date, active task, report id, and task status.
+  - Wired `ReportDetail` to save current page context for active report, active tab, ticker, trade date, and signal.
+  - Kept the first version scoped to current page context only; no cumulative history, factor/trading/order workflows, long-term memory, MCP, or skill workflow UI was added.
+  - Received read-only reviewer feedback that stale-session recovery could send the first Agent message before the current page context PUT completed.
+  - Fixed the recovery race by adding a same-tab `alphamind-agent-context-sync` event; current pages push their `savePageContext` Promise into the event detail, and `AgentDrawer` waits for those context sync tasks before sending or retrying a message.
+- Files modified:
+  - `frontend/src/api/client.ts`
+  - `frontend/src/api/types.ts`
+  - `frontend/src/components/AgentDrawer.tsx`
+  - `frontend/src/features/research/DeepResearchPage.tsx`
+  - `frontend/src/features/reports/ReportDetail.tsx`
+  - `frontend/src/styles.css`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/task_plan.md`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/findings.md`
+  - `.planning/alphamind-mvp-workbench-agent-runtime/progress.md`
+- Test results:
+  - Initial frontend build before reviewer fix: `cd frontend && npm run build` -> TypeScript and Vite production build passed; Vite transformed 1589 modules and built in 1.19s.
+  - Initial backend regression before reviewer fix: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py tests/server/test_report_service.py tests/server/test_research_service.py tests/server/test_research_api.py tests/server/test_agent_runtime.py tests/server/test_agent_tools.py -q` -> 40 passed, 1 warning in 1.57s.
+  - Reviewer verification: `git diff --check` -> passed; `cd frontend && npx tsc --noEmit` -> passed; reviewer could not run backend tests because their environment did not have pytest.
+  - Post-fix whitespace check: `git diff --check` -> no output.
+  - Post-fix frontend build: `cd frontend && npm run build` -> TypeScript and Vite production build passed; Vite transformed 1589 modules and built in 1.19s.
+  - Post-fix backend regression: `/Users/hcy/Desktop/file/AlphaMind/.venv/bin/python -m pytest tests/server/test_app_factory.py tests/server/test_db_repositories.py tests/server/test_report_service.py tests/server/test_research_service.py tests/server/test_research_api.py tests/server/test_agent_runtime.py tests/server/test_agent_tools.py -q` -> 40 passed, 1 warning in 1.61s.
+  - Visible-copy scan: `rg -n "Task 9|后续任务|API 接入|FastAPI|Phase 1|前端 API|等待 API" frontend/src || true` -> no output.
+- Review:
+  - Task 10 read-only reviewer found one blocking race in stale-session recovery; it was fixed and re-verified.
+- Commit:
+  - `feat: 接入Agent抽屉对话` (`3ee9269`)
+- Next recommended action:
+  - Proceed to Phase 7 documentation and final smoke verification.
+
 ## 5-Question Reboot Check
 
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 6 Task 9 frontend research/report API wiring complete and locally reviewed |
-| Where am I going? | Phase 6 Task 10: Agent drawer messaging and current page-context APIs |
+| Where am I? | Phase 6 Task 10 Agent drawer messaging and current page-context APIs complete |
+| Where am I going? | Phase 7 documentation and final smoke verification |
 | What's the goal? | Build the Phase 1 AlphaMind MVP workbench and Agent Runtime foundation |
 | What have I learned? | See `findings.md` |
-| What have I done? | Created scoped planning-with-files tracking files, completed Task 1 backend service skeleton, completed Task 2 SQLite persistence layer, completed Task 3/4 report and research service layer, fixed Phase 3 code-quality review findings, completed Task 5 FastAPI routes, fixed Task 5 quality review/re-review findings, completed Task 6 Agent Runtime core, fixed Task 6 route-priority review finding, completed Task 7 Agent tools wiring, fixed Task 7 active-task conflict handling, completed Task 8 Vite frontend shell, fixed Task 8 UI/UX review findings, and completed Task 9 frontend research/report API wiring |
+| What have I done? | Created scoped planning-with-files tracking files, completed Task 1 backend service skeleton, completed Task 2 SQLite persistence layer, completed Task 3/4 report and research service layer, fixed Phase 3 code-quality review findings, completed Task 5 FastAPI routes, fixed Task 5 quality review/re-review findings, completed Task 6 Agent Runtime core, fixed Task 6 route-priority review finding, completed Task 7 Agent tools wiring, fixed Task 7 active-task conflict handling, completed Task 8 Vite frontend shell, fixed Task 8 UI/UX review findings, completed Task 9 frontend research/report API wiring, and implemented Task 10 Agent drawer/page-context wiring |
 
 ---
 

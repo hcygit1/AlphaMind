@@ -13,7 +13,7 @@ Use the approved superpowers implementation plan to build the Phase 1 AlphaMind 
 
 ## Current Phase
 
-Phase 6 Task 9 frontend research/reports API wiring complete; next Phase 6 Task 10 Agent drawer API wiring
+Phase 6 Task 10 Agent drawer API wiring complete; next Phase 7 final documentation and smoke verification
 
 ## Execution Rule
 
@@ -81,11 +81,12 @@ Each agent must read this file, `findings.md`, `progress.md`, the implementation
 - [x] Execute implementation plan Task 8
 - [x] Address Task 8 UI/UX and code quality review: remove visible development-process UI copy, fix Agent drawer accessibility, prevent form submit refresh, and remove viewport-scaled H1
 - [x] Execute implementation plan Task 9
-- [ ] Execute implementation plan Task 10
+- [x] Execute implementation plan Task 10
 - [x] Verify `npm run build` from `frontend/`
 - [x] Commit frontend shell changes
 - [x] Commit Task 9 frontend API wiring changes
-- **Status:** Task 9 complete; Task 10 pending
+- [x] Commit Task 10 Agent drawer API wiring changes (`3ee9269`)
+- **Status:** Task 10 complete
 
 ### Phase 7: Documentation And Final Verification
 
