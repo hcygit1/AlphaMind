@@ -42,3 +42,21 @@ export type ReportDetailResponse = {
   sections: ReportSection[];
   state?: Record<string, unknown>;
 };
+
+export type AgentSession = {
+  id: string;
+  title: string;
+};
+
+export type AgentToolCard = {
+  type: string;
+  status?: string;
+  payload: Record<string, unknown>;
+};
+
+export type AgentResponse = {
+  message_id: string;
+  role: "assistant";
+  content: string;
+  tool_cards: AgentToolCard[];
+};

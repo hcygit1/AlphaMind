@@ -324,7 +324,9 @@ select:focus-visible {
 }
 
 .primary-action:disabled,
-.secondary-action:disabled {
+.secondary-action:disabled,
+.agent-input button:disabled,
+.agent-input input:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
@@ -726,15 +728,24 @@ select:focus-visible {
 
 .agent-messages {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   overflow: auto;
   padding: 18px;
 }
 
 .assistant-message,
+.user-message,
 .tool-card {
   border-radius: 8px;
   padding: 12px;
   line-height: 1.5;
+}
+
+.assistant-message p,
+.user-message p {
+  margin: 0;
 }
 
 .assistant-message {
@@ -742,10 +753,23 @@ select:focus-visible {
   background: var(--surface-muted);
 }
 
+.user-message {
+  margin-left: 42px;
+  color: #153b63;
+  background: #dbe9f5;
+}
+
+.agent-error {
+  margin: 0;
+  color: #9b2c2c;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .tool-card {
   display: grid;
   gap: 4px;
-  margin-top: 12px;
+  margin-top: 10px;
   border: 1px solid var(--border-subtle);
 }
 

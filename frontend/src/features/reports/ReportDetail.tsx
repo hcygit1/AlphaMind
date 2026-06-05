@@ -1,4 +1,11 @@
 import { useEffect, useState } from "react";
+import {
+  AGENT_CONTEXT_SYNC_EVENT,
+  AGENT_SESSION_READY_EVENT,
+  currentAgentSessionId,
+  savePageContext,
+  type AgentContextSyncDetail
+} from "../../api/client";
 import type { ReportDetailResponse } from "../../api/types";
 
 export function ReportDetail({ detail }: { detail: ReportDetailResponse }) {
@@ -8,6 +15,42 @@ export function ReportDetail({ detail }: { detail: ReportDetailResponse }) {
   useEffect(() => {
     setActiveTab(detail.sections[0]?.id ?? "");
   }, [detail.report.id, detail.sections]);
+
+  useEffect(() => {
+    function saveCurrentPageContext(sessionId: string) {
+      return savePageContext(sessionId, "report_detail", {
+        active_report_id: detail.report.id,
+        active_tab: activeTab,
+        ticker: detail.report.ticker,
+        trade_date: detail.report.trade_date,
+        signal: detail.report.signal
+      });
+    }
+
+    function syncPageContext() {
+      const sessionId = currentAgentSessionId();
+      if (!sessionId) {
+        return;
+      }
+      void saveCurrentPageContext(sessionId);
+    }
+
+    function handleContextSync(event: Event) {
+      const detail = (event as CustomEvent<AgentContextSyncDetail>).detail;
+      if (!detail?.sessionId) {
+        return;
+      }
+      detail.tasks.push(saveCurrentPageContext(detail.sessionId));
+    }
+
+    syncPageContext();
+    window.addEventListener(AGENT_SESSION_READY_EVENT, syncPageContext);
+    window.addEventListener(AGENT_CONTEXT_SYNC_EVENT, handleContextSync);
+    return () => {
+      window.removeEventListener(AGENT_SESSION_READY_EVENT, syncPageContext);
+      window.removeEventListener(AGENT_CONTEXT_SYNC_EVENT, handleContextSync);
+    };
+  }, [activeTab, detail.report.id, detail.report.signal, detail.report.ticker, detail.report.trade_date]);
 
   return (
     <article className="panel report-detail">

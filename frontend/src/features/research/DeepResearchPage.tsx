@@ -1,7 +1,15 @@
 import { CalendarDays, Search, SlidersHorizontal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { createResearchTask, researchEventsUrl } from "../../api/client";
+import {
+  AGENT_CONTEXT_SYNC_EVENT,
+  AGENT_SESSION_READY_EVENT,
+  createResearchTask,
+  currentAgentSessionId,
+  researchEventsUrl,
+  savePageContext,
+  type AgentContextSyncDetail
+} from "../../api/client";
 import type { ResearchProgressEvent, ResearchTask } from "../../api/types";
 
 const defaultTradeDate = new Date().toISOString().slice(0, 10);
@@ -25,6 +33,42 @@ export function DeepResearchPage() {
   useEffect(() => {
     return () => streamRef.current?.close();
   }, []);
+
+  useEffect(() => {
+    function saveCurrentPageContext(sessionId: string) {
+      return savePageContext(sessionId, "deep_research", {
+        ticker,
+        trade_date: tradeDate,
+        task_id: task?.id,
+        report_id: task?.report_id,
+        status: task?.status
+      });
+    }
+
+    function syncPageContext() {
+      const sessionId = currentAgentSessionId();
+      if (!sessionId) {
+        return;
+      }
+      void saveCurrentPageContext(sessionId);
+    }
+
+    function handleContextSync(event: Event) {
+      const detail = (event as CustomEvent<AgentContextSyncDetail>).detail;
+      if (!detail?.sessionId) {
+        return;
+      }
+      detail.tasks.push(saveCurrentPageContext(detail.sessionId));
+    }
+
+    syncPageContext();
+    window.addEventListener(AGENT_SESSION_READY_EVENT, syncPageContext);
+    window.addEventListener(AGENT_CONTEXT_SYNC_EVENT, handleContextSync);
+    return () => {
+      window.removeEventListener(AGENT_SESSION_READY_EVENT, syncPageContext);
+      window.removeEventListener(AGENT_CONTEXT_SYNC_EVENT, handleContextSync);
+    };
+  }, [ticker, tradeDate, task?.id, task?.report_id, task?.status]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

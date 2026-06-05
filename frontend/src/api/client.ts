@@ -1,4 +1,13 @@
-import type { ReportDetailResponse, ReportSummary, ResearchTask } from "./types";
+import type { AgentResponse, AgentSession, ReportDetailResponse, ReportSummary, ResearchTask } from "./types";
+
+export const AGENT_SESSION_STORAGE_KEY = "alphamind_session_id";
+export const AGENT_SESSION_READY_EVENT = "alphamind-agent-session-ready";
+export const AGENT_CONTEXT_SYNC_EVENT = "alphamind-agent-context-sync";
+
+export type AgentContextSyncDetail = {
+  sessionId: string;
+  tasks: Promise<unknown>[];
+};
 
 const API_BASE =
   (import.meta as ImportMeta & { env?: { VITE_API_BASE_URL?: string } }).env?.VITE_API_BASE_URL ??
@@ -51,4 +60,40 @@ export function getReport(reportId: string) {
 
 export function researchEventsUrl(taskId: string) {
   return `${API_BASE}/api/research/tasks/${taskId}/events`;
+}
+
+export function createAgentSession(title = "默认会话") {
+  return request<AgentSession>("/api/agent/sessions", {
+    method: "POST",
+    body: JSON.stringify({ title })
+  });
+}
+
+export function sendAgentMessage(sessionId: string, content: string) {
+  return request<AgentResponse>(`/api/agent/sessions/${sessionId}/messages`, {
+    method: "POST",
+    body: JSON.stringify({ content })
+  });
+}
+
+export function savePageContext(sessionId: string, page: string, context: Record<string, unknown>) {
+  return request<Record<string, unknown>>("/api/runtime/page-context", {
+    method: "PUT",
+    body: JSON.stringify({ session_id: sessionId, page, context })
+  });
+}
+
+export function currentAgentSessionId() {
+  return window.localStorage.getItem(AGENT_SESSION_STORAGE_KEY);
+}
+
+export function persistAgentSessionId(sessionId: string) {
+  window.localStorage.setItem(AGENT_SESSION_STORAGE_KEY, sessionId);
+  window.dispatchEvent(new Event(AGENT_SESSION_READY_EVENT));
+}
+
+export async function requestCurrentPageContextSync(sessionId: string) {
+  const detail: AgentContextSyncDetail = { sessionId, tasks: [] };
+  window.dispatchEvent(new CustomEvent<AgentContextSyncDetail>(AGENT_CONTEXT_SYNC_EVENT, { detail }));
+  await Promise.allSettled(detail.tasks);
 }
