@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from alphamind.agent_runtime.context.types import AgentContext
@@ -46,6 +47,39 @@ def test_report_summary_tool_reads_current_report(tmp_path: Path):
     assert result.status == "completed"
     assert "摘要" in result.content
     assert result.payload["report_id"] == report["id"]
+
+
+def test_report_summary_tool_reads_active_report_tab(tmp_path: Path):
+    db_path = tmp_path / "test.sqlite3"
+    state_path = tmp_path / "state.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                "market_report": "市场章节原文：需求持续恢复。",
+                "final_trade_decision": "**Rating**: Hold\n\n**Executive Summary**: 总摘要。",
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    init_db(db_path)
+    upsert_default_identity(db_path)
+    report = upsert_report(db_path, "300750", "2026-06-03", "Hold", "总摘要", str(state_path))
+
+    result = ReportSummaryTool(db_path).run(
+        {},
+        AgentContext(
+            user_id="default_user",
+            workspace_id="default_workspace",
+            session_id="session_1",
+            page={"context": {"active_report_id": report["id"], "active_tab": "market"}},
+        ),
+    )
+
+    assert result.status == "completed"
+    assert "市场分析" in result.content
+    assert "需求持续恢复" in result.content
+    assert result.payload["active_tab"] == "market"
 
 
 def test_report_summary_tool_fails_without_report_id(tmp_path: Path):

@@ -8,6 +8,7 @@ from typing import Any
 from alphamind.agent_runtime.context.types import AgentContext
 from alphamind.agent_runtime.tools.base import ToolResult
 from server.db.repositories import get_report
+from server.services.report_service import build_report_detail
 
 
 class ReportSummaryTool:
@@ -39,9 +40,23 @@ class ReportSummaryTool:
             f"{report['ticker']} 在 {report['trade_date']} 的最终信号是 "
             f"{report['signal']}。摘要：{report['summary']}"
         )
+        active_tab = page_context.get("active_tab")
+        active_section = self._active_section(str(report_id), str(active_tab)) if active_tab else None
+        if active_section:
+            content = (
+                f"{content}\n\n当前章节：{active_section['title']}。"
+                f"{active_section['summary']}"
+            )
         return ToolResult(
             tool_name=self.name,
             status="completed",
             content=content,
-            payload={"report_id": report_id},
+            payload={"report_id": report_id, **({"active_tab": active_tab} if active_tab else {})},
         )
+
+    def _active_section(self, report_id: str, active_tab: str) -> dict[str, str] | None:
+        detail = build_report_detail(self.db_path, report_id)
+        for section in detail.get("sections", []):
+            if section.get("id") == active_tab:
+                return section
+        return None
