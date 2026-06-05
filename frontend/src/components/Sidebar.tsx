@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import type { RouteKey } from "../App";
 
-const logoUrl = new URL("../assets/alphamind-logo-sidebar.png", import.meta.url).href;
+const logoIconUrl = new URL("../assets/alphamind-logo-icon.png", import.meta.url).href;
 
 type Item =
   | { label: string; route: RouteKey; disabled?: false; icon: JSX.Element }
@@ -37,8 +37,11 @@ export function Sidebar({
   return (
     <aside className="sidebar">
       <div className="brand">
-        <img className="brand-logo" src={logoUrl} alt="AlphaMind" />
-        <span className="sr-only">AlphaMind Investment Workbench</span>
+        <img className="brand-icon" src={logoIconUrl} alt="" aria-hidden="true" />
+        <div className="brand-copy">
+          <strong>AlphaMind</strong>
+          <span>Investment Workbench</span>
+        </div>
       </div>
       <nav className="nav-list" aria-label="Workbench modules">
         {items.map((item) => (

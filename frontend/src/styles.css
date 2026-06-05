@@ -68,20 +68,37 @@ select:focus-visible {
 .brand {
   display: flex;
   align-items: center;
-  min-height: 66px;
+  gap: 10px;
+  min-height: 58px;
   margin: 0 6px 20px;
-  padding: 8px 10px;
-  border: 1px solid rgba(244, 251, 255, 0.24);
-  border-radius: 8px;
-  background: #ffffff;
 }
 
-.brand-logo {
+.brand-icon {
   display: block;
-  width: 100%;
-  height: auto;
-  max-height: 58px;
+  width: 44px;
+  height: 48px;
   object-fit: contain;
+}
+
+.brand-copy {
+  min-width: 0;
+}
+
+.brand-copy strong,
+.brand-copy span {
+  display: block;
+}
+
+.brand-copy strong {
+  color: #ffffff;
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.brand-copy span {
+  color: #a9c7dc;
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .nav-list {
