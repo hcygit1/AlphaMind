@@ -68,35 +68,20 @@ select:focus-visible {
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 48px;
-  margin: 0 6px 18px;
-}
-
-.brand-mark {
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(245, 248, 244, 0.24);
+  min-height: 66px;
+  margin: 0 6px 20px;
+  padding: 8px 10px;
+  border: 1px solid rgba(245, 248, 244, 0.2);
   border-radius: 8px;
-  background: #31443a;
-  font-weight: 800;
+  background: #ffffff;
 }
 
-.brand strong,
-.brand span {
+.brand-logo {
   display: block;
-}
-
-.brand strong {
-  color: #ffffff;
-  font-size: 17px;
-}
-
-.brand span {
-  color: #b9c3bd;
-  font-size: 12px;
+  width: 100%;
+  height: auto;
+  max-height: 58px;
+  object-fit: contain;
 }
 
 .nav-list {
