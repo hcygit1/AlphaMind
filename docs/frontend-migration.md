@@ -28,3 +28,9 @@ AlphaMind 当前的 `web/` 是 Streamlit 实现，适合快速验证投研流程
 - 进度模型：阶段、状态、统计信息
 - 报告 DTO：最终状态、信号、耗时、下载文件名
 - 历史记录读取：按 ticker/date 查询本地日志
+
+## MVP 工作台落地路径
+
+新的主前端从 `frontend/` 开始，使用 Vite + React。新的 API 服务从 `server/` 开始，使用 FastAPI + SQLite。当前 `web/` Streamlit 入口保留为 legacy，不在第一阶段删除。
+
+第一阶段只迁移深度投研任务、报告列表/详情、Agent 小球/抽屉和当前页面上下文。Factor Lab、Strategy Lab、Paper Trading、Orders & Positions、Review & Analytics 先作为灰态入口展示。
