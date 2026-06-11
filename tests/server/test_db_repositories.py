@@ -8,6 +8,7 @@ from server.db.repositories import (
     add_agent_message,
     create_agent_session,
     create_research_task,
+    cancel_active_research_tasks,
     get_page_context,
     get_research_task,
     list_agent_messages,
@@ -201,3 +202,22 @@ def test_create_research_task_if_none_active_allows_after_completed_task(tmp_pat
 
     assert task["ticker"] == "300750"
     assert task["status"] == "pending"
+
+
+def test_cancel_active_research_tasks_marks_only_pending_and_running(tmp_path: Path):
+    db_path = tmp_path / "test.sqlite3"
+    init_db(db_path)
+    upsert_default_identity(db_path)
+    pending = create_research_task(db_path, ticker="300750", trade_date="2026-06-03")
+    running = create_research_task(db_path, ticker="600519", trade_date="2026-06-03")
+    update_research_task(db_path, running["id"], status="running")
+    completed = create_research_task(db_path, ticker="000001", trade_date="2026-06-03")
+    update_research_task(db_path, completed["id"], status="completed")
+
+    changed = cancel_active_research_tasks(db_path, "服务重启，任务已中断")
+
+    assert changed == 2
+    assert get_research_task(db_path, pending["id"])["status"] == "cancelled"
+    assert get_research_task(db_path, running["id"])["status"] == "cancelled"
+    assert get_research_task(db_path, pending["id"])["error_message"] == "服务重启，任务已中断"
+    assert get_research_task(db_path, completed["id"])["status"] == "completed"

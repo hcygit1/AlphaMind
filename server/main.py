@@ -14,7 +14,7 @@ load_dotenv(_PROJECT_ROOT / ".env", override=False)
 from server.api import agent, reports, research, runtime
 from server.core.config import get_settings
 from server.db.connection import init_db
-from server.db.repositories import upsert_default_identity
+from server.db.repositories import cancel_active_research_tasks, upsert_default_identity
 from server.services.agent_service import AgentService
 from server.services.research_service import ResearchService
 
@@ -23,6 +23,7 @@ def create_app(research_service: ResearchService | None = None) -> FastAPI:
     settings = get_settings()
     init_db(settings.database_path)
     upsert_default_identity(settings.database_path)
+    cancel_active_research_tasks(settings.database_path, "服务重启，任务已中断")
 
     app = FastAPI(title="AlphaMind Workbench API")
     app.state.database_path = settings.database_path

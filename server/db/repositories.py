@@ -151,6 +151,23 @@ def list_active_research_tasks(db_path: Path | str) -> list[dict[str, Any]]:
     return [_dict(row) for row in rows]
 
 
+def cancel_active_research_tasks(db_path: Path | str, message: str) -> int:
+    with connect(db_path) as conn:
+        cursor = conn.execute(
+            """
+            UPDATE research_tasks
+            SET status = 'cancelled',
+                error_message = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = ?
+              AND workspace_id = ?
+              AND status IN ('pending', 'running')
+            """,
+            (message, DEFAULT_USER_ID, DEFAULT_WORKSPACE_ID),
+        )
+    return cursor.rowcount
+
+
 def get_report(db_path: Path | str, report_id: str) -> dict[str, Any]:
     with connect(db_path) as conn:
         row = conn.execute("SELECT * FROM research_reports WHERE id = ?", (report_id,)).fetchone()

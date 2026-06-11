@@ -2,7 +2,14 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from server.db.repositories import upsert_report
+from server.db.connection import init_db
+from server.db.repositories import (
+    create_research_task,
+    get_research_task,
+    update_research_task,
+    upsert_default_identity,
+    upsert_report,
+)
 from server.main import create_app
 
 
@@ -71,3 +78,26 @@ def test_report_routes_use_app_state_database_path(tmp_path: Path, monkeypatch):
     assert [item["id"] for item in list_response.json()] == [report["id"]]
     assert detail_response.status_code == 200
     assert detail_response.json()["report"]["id"] == report["id"]
+
+
+def test_create_app_cancels_stale_active_research_tasks(tmp_path: Path, monkeypatch):
+    db_path = tmp_path / "app.sqlite3"
+    monkeypatch.setenv("ALPHAMIND_DB_PATH", str(db_path))
+    init_db(db_path)
+    upsert_default_identity(db_path)
+    running = create_research_task(db_path, "300750", "2026-06-03")
+    update_research_task(db_path, running["id"], status="running")
+    pending = create_research_task(db_path, "600519", "2026-06-03")
+    completed = create_research_task(db_path, "000001", "2026-06-03")
+    update_research_task(db_path, completed["id"], status="completed")
+
+    create_app()
+
+    updated_running = get_research_task(db_path, running["id"])
+    updated_pending = get_research_task(db_path, pending["id"])
+    unchanged_completed = get_research_task(db_path, completed["id"])
+    assert updated_running["status"] == "cancelled"
+    assert updated_pending["status"] == "cancelled"
+    assert updated_running["error_message"] == "服务重启，任务已中断"
+    assert updated_pending["error_message"] == "服务重启，任务已中断"
+    assert unchanged_completed["status"] == "completed"
