@@ -13,6 +13,9 @@ def test_dev_server_script_starts_backend_with_safe_no_proxy():
     content = script.read_text()
     assert "NO_PROXY=127.0.0.1,localhost,127.0.0.0/8" in content
     assert "no_proxy=127.0.0.1,localhost,127.0.0.0/8" in content
+    assert "ALPHAMIND_CORS_ORIGINS=" in content
+    assert "http://127.0.0.1:5173" in content
+    assert "http://localhost:5173" in content
     assert "uvicorn" in content
     assert "server.main:app" in content
 

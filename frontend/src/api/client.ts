@@ -50,6 +50,12 @@ export function createResearchTask(ticker: string, tradeDate: string) {
   });
 }
 
+export function cancelResearchTask(taskId: string) {
+  return request<ResearchTask>(`/api/research/tasks/${taskId}/cancel`, {
+    method: "POST"
+  });
+}
+
 export function listReports() {
   return request<ReportSummary[]>("/api/reports");
 }

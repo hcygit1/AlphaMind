@@ -30,6 +30,15 @@ def create_task(payload: ResearchTaskCreate, request: Request) -> dict:
     return task
 
 
+@router.post("/tasks/{task_id}/cancel")
+def cancel_task(task_id: str, request: Request) -> dict:
+    service = _service(request)
+    task = service.cancel_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
+
+
 @router.get("/tasks/{task_id}")
 def get_task(task_id: str, request: Request) -> dict:
     task = _service(request).get_task(task_id)
@@ -55,7 +64,7 @@ async def task_events(task_id: str, request: Request) -> StreamingResponse:
                 )
             sent = len(events)
             task = service.get_task(task_id)
-            if task and task.get("status") in {"completed", "failed"}:
+            if task and task.get("status") in {"completed", "failed", "cancelled"}:
                 break
             await asyncio.sleep(1)
 

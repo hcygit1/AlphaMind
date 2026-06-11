@@ -18,6 +18,7 @@ from server.services.report_service import extract_summary
 
 
 ResearchRunner = Callable[[str, str, Callable[..., None]], dict[str, Any]]
+TERMINAL_STATUSES = {"completed", "failed", "cancelled"}
 
 
 def default_runner(ticker: str, trade_date: str, emit: Callable[..., None]) -> dict[str, Any]:
@@ -61,10 +62,39 @@ class ResearchService:
         thread.start()
         return thread
 
+    def cancel_task(self, task_id: str) -> dict[str, Any]:
+        task = get_research_task(self.db_path, task_id)
+        if not task:
+            return {}
+        if task.get("status") in TERMINAL_STATUSES:
+            return task
+
+        cancelled = update_research_task(
+            self.db_path,
+            task_id,
+            status="cancelled",
+            error_message="任务已中断",
+        )
+        self._emit(
+            task_id,
+            status="cancelled",
+            stage=cancelled.get("progress_stage"),
+            message="任务已中断",
+        )
+        return cancelled
+
     def run_task_sync(self, task_id: str) -> None:
         task = get_research_task(self.db_path, task_id)
         if not task:
             raise ValueError(f"Unknown task_id: {task_id}")
+        if task.get("status") == "cancelled":
+            self._emit(
+                task_id,
+                status="cancelled",
+                stage=task.get("progress_stage"),
+                message="任务已中断",
+            )
+            return
         update_research_task(self.db_path, task_id, status="running")
         self._emit(task_id, status="running", stage=None, message="任务开始运行")
 
@@ -80,6 +110,15 @@ class ResearchService:
 
         try:
             result = self.runner(task["ticker"], task["trade_date"], emit)
+            current = get_research_task(self.db_path, task_id)
+            if current.get("status") == "cancelled":
+                self._emit(
+                    task_id,
+                    status="cancelled",
+                    stage=current.get("progress_stage"),
+                    message="任务已中断",
+                )
+                return
             report = upsert_report(
                 self.db_path,
                 ticker=task["ticker"],
@@ -103,6 +142,14 @@ class ResearchService:
             )
         except Exception as exc:
             current = get_research_task(self.db_path, task_id)
+            if current.get("status") == "cancelled":
+                self._emit(
+                    task_id,
+                    status="cancelled",
+                    stage=current.get("progress_stage"),
+                    message="任务已中断",
+                )
+                return
             update_research_task(
                 self.db_path,
                 task_id,

@@ -8,6 +8,7 @@ PORT="${PORT:-8000}"
 
 export NO_PROXY=127.0.0.1,localhost,127.0.0.0/8
 export no_proxy=127.0.0.1,localhost,127.0.0.0/8
+export ALPHAMIND_CORS_ORIGINS="${ALPHAMIND_CORS_ORIGINS:-http://127.0.0.1:5173,http://localhost:5173}"
 
 cd "$PROJECT_ROOT"
 exec "$PYTHON_BIN" -m uvicorn server.main:app --host "$HOST" --port "$PORT"

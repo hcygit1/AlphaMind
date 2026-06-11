@@ -261,6 +261,12 @@ select:focus-visible {
   border-color: #f0c1b9;
 }
 
+.status-pill.warning {
+  color: #8a5f13;
+  background: #fff7e6;
+  border-color: #f0d29a;
+}
+
 .research-form {
   display: grid;
   gap: 14px;
@@ -310,6 +316,10 @@ select:focus-visible {
 
 .primary-action {
   width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   color: #ffffff;
   background: var(--accent);
   font-weight: 700;
@@ -323,6 +333,32 @@ select:focus-visible {
   color: var(--accent-strong);
   background: #e8f8fb;
   font-weight: 700;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.form-actions .primary-action {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.cancel-action {
+  color: #9b2c2c;
+  background: #fff0ed;
+}
+
+.button-spinner {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .primary-action:disabled,

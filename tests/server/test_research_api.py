@@ -13,7 +13,6 @@ class FakeResearchService:
         self.events: dict[str, list[dict]] = {}
         self.tasks: dict[str, dict] = {}
         self.started_tasks: list[str] = []
-        self.task_status = "completed"
 
     def create_task(self, ticker: str, trade_date: str):
         if self.fail_create:
@@ -46,7 +45,29 @@ class FakeResearchService:
         task = self.tasks.get(task_id)
         if not task:
             return {}
-        return {**task, "status": self.task_status}
+        return task
+
+    def cancel_task(self, task_id: str):
+        task = self.tasks.get(task_id)
+        if not task:
+            return {}
+        task = {
+            **task,
+            "status": "cancelled",
+            "error_message": "任务已中断",
+        }
+        self.tasks[task_id] = task
+        self.events.setdefault(task_id, []).append(
+            {
+                "event": "research_progress",
+                "task_id": task_id,
+                "status": "cancelled",
+                "stage": task.get("progress_stage"),
+                "message": "任务已中断",
+                "payload": {},
+            }
+        )
+        return task
 
     def get_events(self, task_id: str):
         return self.events.get(task_id, [])
@@ -136,6 +157,7 @@ def test_research_events_stream_uses_injected_shared_service(client):
         json={"ticker": "300750", "trade_date": "2026-06-03"},
     )
     task_id = task_response.json()["id"]
+    service.tasks[task_id]["status"] = "completed"
     service.events[task_id].append(
         {
             "event": "research_progress",
@@ -154,6 +176,23 @@ def test_research_events_stream_uses_injected_shared_service(client):
     assert "event: research_progress" in body
     assert "任务已创建" in body
     assert "深度投研完成" in body
+
+
+def test_research_task_cancel_route_marks_task_cancelled(client):
+    test_client, service = client
+    task_response = test_client.post(
+        "/api/research/tasks",
+        json={"ticker": "300750", "trade_date": "2026-06-03"},
+    )
+    task_id = task_response.json()["id"]
+
+    response = test_client.post(f"/api/research/tasks/{task_id}/cancel")
+
+    assert response.status_code == 200
+    cancelled = response.json()
+    assert cancelled["status"] == "cancelled"
+    assert cancelled["error_message"] == "任务已中断"
+    assert service.tasks[task_id]["status"] == "cancelled"
 
 
 def test_unknown_research_events_task_returns_404(client):

@@ -2,7 +2,7 @@ export type ResearchTask = {
   id: string;
   ticker: string;
   trade_date: string;
-  status: "pending" | "running" | "completed" | "failed";
+  status: "pending" | "running" | "completed" | "failed" | "cancelled";
   progress_stage?: string | null;
   report_id?: string | null;
   error_message?: string | null;

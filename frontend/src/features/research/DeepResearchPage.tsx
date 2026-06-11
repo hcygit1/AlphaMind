@@ -1,9 +1,10 @@
-import { CalendarDays, Search, SlidersHorizontal } from "lucide-react";
+import { CalendarDays, CircleStop, LoaderCircle, Search, SlidersHorizontal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import {
   AGENT_CONTEXT_SYNC_EVENT,
   AGENT_SESSION_READY_EVENT,
+  cancelResearchTask,
   createResearchTask,
   currentAgentSessionId,
   researchEventsUrl,
@@ -18,7 +19,8 @@ const statusLabels: Record<ResearchTask["status"], string> = {
   pending: "等待中",
   running: "运行中",
   completed: "已完成",
-  failed: "失败"
+  failed: "失败",
+  cancelled: "已中断"
 };
 
 export function DeepResearchPage() {
@@ -28,7 +30,14 @@ export function DeepResearchPage() {
   const [events, setEvents] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const streamRef = useRef<EventSource | null>(null);
+  const isTaskActive = task?.status === "pending" || task?.status === "running";
+  const isBusy = submitting || isTaskActive || cancelling;
+  const primaryActionLabel = submitting ? "正在创建..." : isTaskActive ? "执行中..." : "启动深度投研";
+  const showPrimarySpinner = submitting || isTaskActive;
+  const statusClass =
+    task?.status === "failed" ? "danger" : task?.status === "cancelled" ? "warning" : "neutral";
 
   useEffect(() => {
     return () => streamRef.current?.close();
@@ -72,6 +81,9 @@ export function DeepResearchPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isBusy) {
+      return;
+    }
     streamRef.current?.close();
     setError("");
     setEvents([]);
@@ -89,6 +101,27 @@ export function DeepResearchPage() {
     }
   }
 
+  async function handleCancel() {
+    if (!task || !isTaskActive) {
+      return;
+    }
+    setError("");
+    setCancelling(true);
+    try {
+      const cancelled = await cancelResearchTask(task.id);
+      setTask(cancelled);
+      setEvents((current) =>
+        current[current.length - 1] === "任务已中断" ? current : [...current, "任务已中断"]
+      );
+      streamRef.current?.close();
+      streamRef.current = null;
+    } catch (exc) {
+      setError(exc instanceof Error ? exc.message : String(exc));
+    } finally {
+      setCancelling(false);
+    }
+  }
+
   function openProgressStream(taskId: string) {
     const stream = new EventSource(researchEventsUrl(taskId));
     streamRef.current = stream;
@@ -103,12 +136,15 @@ export function DeepResearchPage() {
               status: payload.status,
               progress_stage: payload.stage ?? current.progress_stage,
               report_id: payload.payload?.report_id ?? current.report_id,
-              error_message: payload.status === "failed" ? payload.message : current.error_message
+              error_message:
+                payload.status === "failed" || payload.status === "cancelled"
+                  ? payload.message
+                  : current.error_message
             }
           : current
       );
 
-      if (payload.status === "completed" || payload.status === "failed") {
+      if (payload.status === "completed" || payload.status === "failed" || payload.status === "cancelled") {
         stream.close();
         streamRef.current = null;
       }
@@ -129,7 +165,7 @@ export function DeepResearchPage() {
             <h2>Launch Research</h2>
             <p>输入股票与交易日期，创建一份完整的深度投研报告。</p>
           </div>
-          <span className={"status-pill " + (task?.status === "failed" ? "danger" : "neutral")}>
+          <span className={"status-pill " + statusClass}>
             {task ? statusLabels[task.status] : "可启动"}
           </span>
         </div>
@@ -142,7 +178,7 @@ export function DeepResearchPage() {
                 placeholder="例如 300750 或 宁德时代"
                 value={ticker}
                 onChange={(event) => setTicker(event.target.value)}
-                disabled={submitting}
+                disabled={isBusy}
                 required
               />
             </div>
@@ -155,7 +191,7 @@ export function DeepResearchPage() {
                 type="date"
                 value={tradeDate}
                 onChange={(event) => setTradeDate(event.target.value)}
-                disabled={submitting}
+                disabled={isBusy}
                 required
               />
             </div>
@@ -164,15 +200,33 @@ export function DeepResearchPage() {
             <span>模型配置</span>
             <div className="field-with-icon">
               <SlidersHorizontal size={18} aria-hidden="true" />
-              <select defaultValue="default" disabled={submitting}>
+              <select defaultValue="default" disabled={isBusy}>
                 <option value="default">默认研究配置</option>
               </select>
             </div>
           </label>
           {error && <p className="form-error">{error}</p>}
-          <button className="primary-action" type="submit" disabled={submitting}>
-            {submitting ? "正在创建..." : "启动深度投研"}
-          </button>
+          <div className="form-actions">
+            <button className="primary-action" type="submit" disabled={isBusy}>
+              {showPrimarySpinner && <LoaderCircle className="button-spinner" size={16} aria-hidden="true" />}
+              {primaryActionLabel}
+            </button>
+            {isTaskActive && (
+              <button
+                className="secondary-action cancel-action"
+                type="button"
+                onClick={handleCancel}
+                disabled={cancelling}
+              >
+                {cancelling ? (
+                  <LoaderCircle className="button-spinner" size={16} aria-hidden="true" />
+                ) : (
+                  <CircleStop size={16} aria-hidden="true" />
+                )}
+                {cancelling ? "正在中断..." : "中断"}
+              </button>
+            )}
+          </div>
         </form>
       </div>
       <div className="panel progress-panel">
