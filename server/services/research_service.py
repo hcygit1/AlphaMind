@@ -7,7 +7,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Callable
 
-from alphamind.default_config import DEFAULT_CONFIG
+from server.core.llm_config import build_research_config
 from server.db.repositories import (
     create_research_task_if_none_active,
     get_research_task,
@@ -23,10 +23,11 @@ ResearchRunner = Callable[[str, str, Callable[..., None]], dict[str, Any]]
 def default_runner(ticker: str, trade_date: str, emit: Callable[..., None]) -> dict[str, Any]:
     from alphamind.graph.trading_graph import AlphaMindGraph
 
-    graph = AlphaMindGraph(debug=False, config=DEFAULT_CONFIG.copy())
+    config = build_research_config()
+    graph = AlphaMindGraph(debug=False, config=config)
     final_state, signal = graph.propagate(ticker, trade_date)
     state_path = (
-        Path(DEFAULT_CONFIG["results_dir"])
+        Path(config["results_dir"])
         / graph.ticker
         / "AlphaMindStrategy_logs"
         / f"full_states_log_{trade_date}.json"

@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
+load_dotenv(_PROJECT_ROOT / ".env", override=False)
 
 from server.api import agent, reports, research, runtime
 from server.core.config import get_settings

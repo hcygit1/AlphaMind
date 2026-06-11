@@ -98,7 +98,11 @@ def test_default_runner_summary_uses_report_summary_extractor(tmp_path: Path, mo
         "alphamind.graph.trading_graph",
         SimpleNamespace(AlphaMindGraph=FakeGraph),
     )
-    monkeypatch.setitem(research_service_module.DEFAULT_CONFIG, "results_dir", str(tmp_path))
+    monkeypatch.setattr(
+        research_service_module,
+        "build_research_config",
+        lambda: {"results_dir": str(tmp_path)},
+    )
 
     result = research_service_module.default_runner("300750", "2026-06-03", lambda **kwargs: None)
 
