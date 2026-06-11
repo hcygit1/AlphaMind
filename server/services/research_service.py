@@ -11,6 +11,7 @@ from server.core.llm_config import build_research_config
 from server.db.repositories import (
     create_research_task_if_none_active,
     get_research_task,
+    list_active_research_tasks,
     update_research_task,
     upsert_report,
 )
@@ -166,6 +167,10 @@ class ResearchService:
 
     def get_task(self, task_id: str) -> dict[str, Any]:
         return get_research_task(self.db_path, task_id)
+
+    def get_active_task(self) -> dict[str, Any] | None:
+        active_tasks = list_active_research_tasks(self.db_path)
+        return active_tasks[0] if active_tasks else None
 
     def get_events(self, task_id: str) -> list[dict[str, Any]]:
         with self._lock:

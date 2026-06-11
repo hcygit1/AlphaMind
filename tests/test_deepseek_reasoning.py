@@ -19,6 +19,7 @@ from langchain_core.prompt_values import ChatPromptValue
 from alphamind.llm_clients.openai_client import (
     DeepSeekChatOpenAI,
     NormalizedChatOpenAI,
+    OpenAIClient,
     _input_to_messages,
 )
 
@@ -167,3 +168,13 @@ class TestBaseClassIsolation:
             NormalizedChatOpenAI._get_request_payload
             is NormalizedChatOpenAI.__bases__[0]._get_request_payload
         )
+
+    def test_openai_client_ignores_invalid_no_proxy_ipv6_entries(self, monkeypatch):
+        monkeypatch.setenv("NO_PROXY", "127.0.0.1,localhost,::1,127.0.0.0/8,::1/128")
+        monkeypatch.setenv("no_proxy", "127.0.0.1,localhost,::1,127.0.0.0/8,::1/128")
+        monkeypatch.setenv("DEEPSEEK_API_KEY", "placeholder")
+
+        client = OpenAIClient(model="deepseek-v4-flash", provider="deepseek")
+        llm = client.get_llm()
+
+        assert llm is not None

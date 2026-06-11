@@ -64,6 +64,10 @@ export function getReport(reportId: string) {
   return request<ReportDetailResponse>(`/api/reports/${reportId}`);
 }
 
+export function getActiveResearchTask() {
+  return request<ResearchTask | null>("/api/research/tasks/active");
+}
+
 export function researchEventsUrl(taskId: string) {
   return `${API_BASE}/api/research/tasks/${taskId}/events`;
 }

@@ -72,6 +72,12 @@ class FakeResearchService:
     def get_events(self, task_id: str):
         return self.events.get(task_id, [])
 
+    def get_active_task(self):
+        for task in self.tasks.values():
+            if task["status"] in {"pending", "running"}:
+                return task
+        return None
+
 
 @pytest.fixture
 def client(tmp_path: Path, monkeypatch):
@@ -193,6 +199,34 @@ def test_research_task_cancel_route_marks_task_cancelled(client):
     assert cancelled["status"] == "cancelled"
     assert cancelled["error_message"] == "任务已中断"
     assert service.tasks[task_id]["status"] == "cancelled"
+
+
+def test_research_active_task_route_returns_current_running_task(client):
+    test_client, service = client
+    task_response = test_client.post(
+        "/api/research/tasks",
+        json={"ticker": "300750", "trade_date": "2026-06-03"},
+    )
+    task_id = task_response.json()["id"]
+    service.tasks[task_id]["status"] = "running"
+    service.tasks[task_id]["progress_stage"] = "market"
+
+    response = test_client.get("/api/research/tasks/active")
+
+    assert response.status_code == 200
+    active = response.json()
+    assert active["id"] == task_id
+    assert active["status"] == "running"
+    assert active["progress_stage"] == "market"
+
+
+def test_research_active_task_route_returns_null_when_none_active(client):
+    test_client, _service = client
+
+    response = test_client.get("/api/research/tasks/active")
+
+    assert response.status_code == 200
+    assert response.json() is None
 
 
 def test_unknown_research_events_task_returns_404(client):

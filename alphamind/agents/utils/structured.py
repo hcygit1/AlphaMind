@@ -18,6 +18,7 @@ all three agents log the same warnings when fallback fires.
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any, Callable, Optional, TypeVar
 
@@ -28,6 +29,43 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T", bound=BaseModel)
 
 
+class _JsonModeStructuredRunnable:
+    def __init__(self, structured_llm: Any, schema: type[BaseModel]):
+        self.structured_llm = structured_llm
+        self.schema = schema
+
+    def invoke(self, prompt: Any) -> Any:
+        return self.structured_llm.invoke(_with_json_mode_instruction(prompt, self.schema))
+
+
+def _with_json_mode_instruction(prompt: Any, schema: type[BaseModel]) -> Any:
+    schema_json = json.dumps(schema.model_json_schema(), ensure_ascii=False)
+    instruction = (
+        "\n\nReturn only a valid JSON object matching this schema. "
+        "Do not include markdown fences or explanatory text.\n"
+        f"JSON schema: {schema_json}"
+    )
+    if isinstance(prompt, str):
+        return prompt + instruction
+    if isinstance(prompt, list):
+        messages = []
+        inserted = False
+        for message in reversed(prompt):
+            if (
+                isinstance(message, dict)
+                and message.get("role") == "user"
+                and isinstance(message.get("content"), str)
+            ):
+                messages.append({**message, "content": message["content"] + instruction})
+                inserted = True
+            else:
+                messages.append(message)
+        messages.reverse()
+        if inserted:
+            return messages
+    return prompt
+
+
 def bind_structured(llm: Any, schema: type[T], agent_name: str) -> Optional[Any]:
     """Return ``llm.with_structured_output(schema)`` or ``None`` if unsupported.
 
@@ -35,6 +73,11 @@ def bind_structured(llm: Any, schema: type[T], agent_name: str) -> Optional[Any]
     will use free-text generation for every call instead of one-shot fallback.
     """
     try:
+        if getattr(llm, "provider", "").lower() == "deepseek":
+            return _JsonModeStructuredRunnable(
+                llm.with_structured_output(schema, method="json_mode"),
+                schema,
+            )
         return llm.with_structured_output(schema)
     except (NotImplementedError, AttributeError) as exc:
         logger.warning(

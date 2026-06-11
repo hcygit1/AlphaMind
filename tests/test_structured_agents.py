@@ -21,6 +21,7 @@ from alphamind.agents.schemas import (
     render_trader_proposal,
 )
 from alphamind.agents.trader.trader import create_trader
+from alphamind.agents.utils.structured import bind_structured
 
 
 # ---------------------------------------------------------------------------
@@ -230,3 +231,19 @@ class TestResearchManagerAgent:
         rm = create_research_manager(llm)
         result = rm(_make_rm_state())
         assert result["investment_plan"] == plain_response
+
+
+@pytest.mark.unit
+class TestStructuredBinding:
+    def test_deepseek_binding_uses_json_mode_to_avoid_tool_choice(self):
+        structured = MagicMock()
+        llm = MagicMock()
+        llm.provider = "deepseek"
+        llm.with_structured_output.return_value = structured
+
+        bound = bind_structured(llm, ResearchPlan, "Research Manager")
+
+        assert bound is not structured
+        llm.with_structured_output.assert_called_once_with(ResearchPlan, method="json_mode")
+        bound.invoke("hello")
+        assert "Return only a valid JSON object" in structured.invoke.call_args.args[0]

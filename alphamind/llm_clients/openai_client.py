@@ -1,6 +1,7 @@
 import os
 from typing import Any, Optional
 
+import httpx
 from langchain_core.messages import AIMessage
 from langchain_openai import ChatOpenAI
 
@@ -22,6 +23,13 @@ class NormalizedChatOpenAI(ChatOpenAI):
     Provider-specific quirks (e.g. DeepSeek's thinking mode) live in
     purpose-built subclasses below so this base class stays small.
     """
+
+    def __init__(self, *args, **kwargs):
+        if kwargs.get("http_client") is None:
+            kwargs["http_client"] = httpx.Client(trust_env=False)
+        if kwargs.get("http_async_client") is None:
+            kwargs["http_async_client"] = httpx.AsyncClient(trust_env=False)
+        super().__init__(*args, **kwargs)
 
     def invoke(self, input, config=None, **kwargs):
         return normalize_content(super().invoke(input, config, **kwargs))

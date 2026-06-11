@@ -39,6 +39,11 @@ def cancel_task(task_id: str, request: Request) -> dict:
     return task
 
 
+@router.get("/tasks/active")
+def get_active_task(request: Request) -> dict | None:
+    return _service(request).get_active_task()
+
+
 @router.get("/tasks/{task_id}")
 def get_task(task_id: str, request: Request) -> dict:
     task = _service(request).get_task(task_id)

@@ -7,6 +7,7 @@ import {
   cancelResearchTask,
   createResearchTask,
   currentAgentSessionId,
+  getActiveResearchTask,
   researchEventsUrl,
   savePageContext,
   type AgentContextSyncDetail
@@ -31,6 +32,7 @@ export function DeepResearchPage() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [loadingActiveTask, setLoadingActiveTask] = useState(true);
   const streamRef = useRef<EventSource | null>(null);
   const isTaskActive = task?.status === "pending" || task?.status === "running";
   const isBusy = submitting || isTaskActive || cancelling;
@@ -41,6 +43,38 @@ export function DeepResearchPage() {
 
   useEffect(() => {
     return () => streamRef.current?.close();
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function restoreActiveTask() {
+      setLoadingActiveTask(true);
+      try {
+        const activeTask = await getActiveResearchTask();
+        if (!mounted) {
+          return;
+        }
+        if (activeTask) {
+          setTask(activeTask);
+          setEvents(["已恢复正在运行的深度投研任务。"]);
+          openProgressStream(activeTask.id);
+        }
+      } catch (exc) {
+        if (mounted) {
+          setError(exc instanceof Error ? exc.message : String(exc));
+        }
+      } finally {
+        if (mounted) {
+          setLoadingActiveTask(false);
+        }
+      }
+    }
+
+    void restoreActiveTask();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -123,6 +157,7 @@ export function DeepResearchPage() {
   }
 
   function openProgressStream(taskId: string) {
+    streamRef.current?.close();
     const stream = new EventSource(researchEventsUrl(taskId));
     streamRef.current = stream;
 
@@ -166,7 +201,7 @@ export function DeepResearchPage() {
             <p>输入股票与交易日期，创建一份完整的深度投研报告。</p>
           </div>
           <span className={"status-pill " + statusClass}>
-            {task ? statusLabels[task.status] : "可启动"}
+            {loadingActiveTask ? "同步中" : task ? statusLabels[task.status] : "可启动"}
           </span>
         </div>
         <form className="research-form" onSubmit={handleSubmit}>
@@ -178,7 +213,7 @@ export function DeepResearchPage() {
                 placeholder="例如 300750 或 宁德时代"
                 value={ticker}
                 onChange={(event) => setTicker(event.target.value)}
-                disabled={isBusy}
+                disabled={isBusy || loadingActiveTask}
                 required
               />
             </div>
@@ -191,7 +226,7 @@ export function DeepResearchPage() {
                 type="date"
                 value={tradeDate}
                 onChange={(event) => setTradeDate(event.target.value)}
-                disabled={isBusy}
+                disabled={isBusy || loadingActiveTask}
                 required
               />
             </div>
@@ -200,14 +235,14 @@ export function DeepResearchPage() {
             <span>模型配置</span>
             <div className="field-with-icon">
               <SlidersHorizontal size={18} aria-hidden="true" />
-              <select defaultValue="default" disabled={isBusy}>
+              <select defaultValue="default" disabled={isBusy || loadingActiveTask}>
                 <option value="default">默认研究配置</option>
               </select>
             </div>
           </label>
           {error && <p className="form-error">{error}</p>}
           <div className="form-actions">
-            <button className="primary-action" type="submit" disabled={isBusy}>
+            <button className="primary-action" type="submit" disabled={isBusy || loadingActiveTask}>
               {showPrimarySpinner && <LoaderCircle className="button-spinner" size={16} aria-hidden="true" />}
               {primaryActionLabel}
             </button>
@@ -236,6 +271,13 @@ export function DeepResearchPage() {
         </div>
         {task ? (
           <div className="task-status">
+            <div className="task-state-banner">
+              <div>
+                <span className="workspace-kicker">CURRENT RUN</span>
+                <strong>{task.ticker} · {task.trade_date}</strong>
+              </div>
+              <span className={"status-pill " + statusClass}>{statusLabels[task.status]}</span>
+            </div>
             <dl>
               <div>
                 <dt>任务</dt>
@@ -256,6 +298,22 @@ export function DeepResearchPage() {
                 </div>
               )}
             </dl>
+            <div className="research-steps" aria-label="任务阶段">
+              {buildTaskSteps(task).map((step) => (
+                <div className={"research-step " + step.status} key={step.label}>
+                  <span />
+                  <div>
+                    <strong>{step.label}</strong>
+                    <p>{step.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {isTaskActive && (
+              <p className="task-note">
+                后台正在执行深度投研。切换页面不会丢失任务，返回后会自动恢复进度连接。
+              </p>
+            )}
             {task.error_message && <p className="form-error">{task.error_message}</p>}
           </div>
         ) : null}
@@ -291,4 +349,38 @@ export function DeepResearchPage() {
       </div>
     </section>
   );
+}
+
+function buildTaskSteps(task: ResearchTask) {
+  const runningOrDone = ["running", "completed", "failed", "cancelled"].includes(task.status);
+  const terminal = ["completed", "failed", "cancelled"].includes(task.status);
+  return [
+    {
+      label: "任务创建",
+      description: "任务已进入研究队列。",
+      status: "done"
+    },
+    {
+      label: "开始运行",
+      description: runningOrDone ? "后端已开始执行工作流。" : "等待后端调度。",
+      status: runningOrDone ? "done" : "active"
+    },
+    {
+      label: "当前阶段",
+      description: task.progress_stage ?? "等待阶段更新。",
+      status: task.status === "running" ? "active" : terminal ? "done" : "pending"
+    },
+    {
+      label: "任务结果",
+      description:
+        task.status === "completed"
+          ? "报告已生成，可前往报告页查看。"
+          : task.status === "failed"
+            ? "任务失败，请查看错误信息。"
+            : task.status === "cancelled"
+              ? "任务已中断，不会生成报告。"
+              : "等待最终决策。",
+      status: terminal ? (task.status === "completed" ? "done" : "stopped") : "pending"
+    }
+  ];
 }
