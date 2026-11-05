@@ -51,7 +51,9 @@ export function ReportDetail({ detail }: { detail: ReportDetailResponse }) {
     setExecuteError("");
     try {
       const result = await executeTradeDecision(decision.id);
-      if (result.status === "executed") {
+      if (result.status === "executing") {
+        setExecuteMessage("决策已提交后台执行（Judge 评审中），状态稍后自动更新。");
+      } else if (result.status === "executed") {
         const order = result.order ?? result.orders?.[result.orders.length - 1];
         setExecuteMessage(
           order

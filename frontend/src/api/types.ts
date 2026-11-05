@@ -14,13 +14,15 @@ export type ResearchTask = {
 export type WatchlistItem = {
   id: string;
   ticker: string;
-  enabled: number;
+  /** 后端存 SQLite INTEGER 0/1，client 层归一化为 boolean */
+  enabled: boolean;
   created_at: string;
 };
 
 export type AutomationSettings = {
   id: number;
-  enabled: number;
+  /** 后端存 SQLite INTEGER 0/1，client 层归一化为 boolean */
+  enabled: boolean;
   run_time: string;
   last_run_date?: string | null;
 };
@@ -158,11 +160,11 @@ export type TradeAlert = {
   id: string;
   account_id: string;
   ticker: string;
-  kind: "stop_loss_hit" | "price_target_hit" | string;
+  kind: "stop_loss_hit" | "price_target_hit";
   price: number;
   threshold: number;
   message: string;
-  status: "open" | "acked" | string;
+  status: "open" | "acked";
   created_at: string;
 };
 
@@ -174,7 +176,7 @@ export type RefreshResponse = {
 };
 
 export type ExecuteDecisionResponse = {
-  status: "executed" | "skipped" | "blocked" | "rejected";
+  status: "executing" | "executed" | "skipped" | "blocked" | "rejected" | "failed";
   order?: TradingOrder;
   orders?: TradingOrder[];
   reason?: string;

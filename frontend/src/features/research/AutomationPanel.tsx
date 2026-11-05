@@ -80,7 +80,7 @@ export function AutomationPanel() {
     }
   }
 
-  const enabled = settings ? settings.enabled === 1 : false;
+  const enabled = settings ? settings.enabled : false;
 
   return (
     <div className="panel automation-panel">

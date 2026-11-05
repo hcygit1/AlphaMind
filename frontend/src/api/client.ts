@@ -126,14 +126,21 @@ export function getResearchTask(taskId: string) {
 
 // ---- Automation ----
 
+/** 后端 SQLite BOOLEAN 以 0/1 返回，统一归一化为 boolean */
+function normalizeEnabled<T extends { enabled: unknown }>(row: T): Omit<T, "enabled"> & { enabled: boolean } {
+  return { ...row, enabled: row.enabled === 1 || row.enabled === true };
+}
+
 export function listWatchlist() {
-  return request<WatchlistItem[]>("/api/automation/watchlist");
+  return request<WatchlistItem[]>("/api/automation/watchlist").then((items) =>
+    items.map(normalizeEnabled)
+  );
 }
 
 export function addWatchlistTicker(ticker: string) {
   return request<WatchlistItem>(`/api/automation/watchlist/${encodeURIComponent(ticker)}`, {
     method: "POST"
-  });
+  }).then(normalizeEnabled);
 }
 
 export function removeWatchlistTicker(ticker: string) {
@@ -143,7 +150,7 @@ export function removeWatchlistTicker(ticker: string) {
 }
 
 export function getAutomationSettings() {
-  return request<AutomationSettings>("/api/automation/settings");
+  return request<AutomationSettings>("/api/automation/settings").then(normalizeEnabled);
 }
 
 export function updateAutomationSettings(payload: { enabled?: boolean; run_time?: string }) {
@@ -151,7 +158,7 @@ export function updateAutomationSettings(payload: { enabled?: boolean; run_time?
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
-  });
+  }).then(normalizeEnabled);
 }
 
 export function researchEventsUrl(taskId: string) {

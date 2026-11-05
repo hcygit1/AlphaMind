@@ -43,6 +43,7 @@ export function DeepResearchPage() {
   const [cancelling, setCancelling] = useState(false);
   const [loadingActiveTask, setLoadingActiveTask] = useState(true);
   const streamRef = useRef<EventSource | null>(null);
+  const reconnectTimerRef = useRef<number | null>(null);
   const isTaskActive = task?.status === "pending" || task?.status === "running";
   const isBusy = submitting || isTaskActive || cancelling;
   const primaryActionLabel = submitting ? "正在创建..." : isTaskActive ? "执行中..." : "启动深度投研";
@@ -51,7 +52,12 @@ export function DeepResearchPage() {
     task?.status === "failed" ? "danger" : task?.status === "cancelled" ? "warning" : "neutral";
 
   useEffect(() => {
-    return () => streamRef.current?.close();
+    return () => {
+      streamRef.current?.close();
+      if (reconnectTimerRef.current !== null) {
+        window.clearTimeout(reconnectTimerRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -211,9 +217,22 @@ export function DeepResearchPage() {
     });
 
     stream.onerror = () => {
-      setError("进度连接中断，请稍后刷新查看任务状态。");
+      // 网络抖动/服务重启时不放弃：延迟后自动重连（重连期间事件会从
+      // _events 缓冲补发）。任务已终态时 EventSource 自身也不会再触发。
       stream.close();
       streamRef.current = null;
+      if (reconnectTimerRef.current !== null) {
+        window.clearTimeout(reconnectTimerRef.current);
+      }
+      reconnectTimerRef.current = window.setTimeout(() => {
+        reconnectTimerRef.current = null;
+        setTask((current) => {
+          if (current?.id === taskId && (current.status === "pending" || current.status === "running")) {
+            openProgressStream(taskId);
+          }
+          return current;
+        });
+      }, 3000);
     };
   }
 

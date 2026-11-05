@@ -1680,3 +1680,13 @@ strong.return-down {
 .clickable-row:hover td {
   background: var(--surface-muted);
 }
+
+/* 懒加载页面分包时的 Suspense 占位 */
+.route-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+  color: var(--text-secondary, #64748b);
+  font-size: 14px;
+}
