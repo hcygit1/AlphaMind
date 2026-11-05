@@ -78,10 +78,15 @@ def decisions(request: Request) -> list[dict]:
 
 @router.post("/decisions/{decision_id}/execute")
 def execute_decision(decision_id: str, request: Request) -> dict:
+    """异步执行决策：立即返回，Judge+下单在后台线程完成。
+
+    LLMJudge 网络调用可达数十秒，不能占用请求线程；
+    前端轮询 /api/trading/decisions 观察状态流转到终态。
+    """
     db_path = request.app.state.database_path
     decision = get_decision(db_path, decision_id)
     if not decision:
-        raise HTTPException(status_code=404, detail="Decision not found")
+        raise HTTPException(status_code=404, detail="决策不存在")
 
     context: dict[str, Any] | None = None
     try:
@@ -93,7 +98,7 @@ def execute_decision(decision_id: str, request: Request) -> dict:
         context = None
 
     try:
-        return _service(request).execute_decision(decision_id, judge_context=context)
+        return _service(request).execute_decision_async(decision_id, judge_context=context)
     except OrderError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,22 @@ from server.db.trading_repositories import create_decision
 from server.main import create_app
 from server.trading.extraction import DecisionRecord
 from server.trading.judge import RuleJudge
+
+DECISION_TERMINAL = {"executed", "skipped", "blocked", "rejected", "failed"}
+
+
+def _wait_decision_terminal(test_client: TestClient, decision_id: str, timeout: float = 5.0) -> dict:
+    """轮询决策到终态（execute 为后台线程执行，API 立即返回 executing）。"""
+    deadline = time.time() + timeout
+    last: dict = {}
+    while time.time() < deadline:
+        last = next(
+            d for d in test_client.get("/api/trading/decisions").json() if d["id"] == decision_id
+        )
+        if last["status"] in DECISION_TERMINAL:
+            return last
+        time.sleep(0.05)
+    return last
 
 
 @pytest.fixture
@@ -67,23 +84,26 @@ def test_execute_decision_creates_pending_order(client):
 
     resp = test_client.post(f"/api/trading/decisions/{decision['id']}/execute")
     assert resp.status_code == 200
-    body = resp.json()
-    assert body["status"] == "executed"
-    assert body["order"]["quantity"] == 10000
-    assert body["order"]["status"] == "pending"
+    # 异步执行：立即返回 executing，后台线程完成 Judge + 下单
+    assert resp.json()["status"] == "executing"
+
+    final = _wait_decision_terminal(test_client, decision["id"])
+    assert final["status"] == "executed"
 
     orders = test_client.get("/api/trading/orders").json()
     assert len(orders) == 1
     assert orders[0]["decision_id"] == decision["id"]
+    assert orders[0]["quantity"] == 10000
+    assert orders[0]["status"] == "pending"
 
 
 def test_execute_decision_idempotent(client):
     test_client, db_path = client
     decision = _make_decision(db_path)
     first = test_client.post(f"/api/trading/decisions/{decision['id']}/execute").json()
+    _wait_decision_terminal(test_client, decision["id"])
     second = test_client.post(f"/api/trading/decisions/{decision['id']}/execute").json()
     assert second["status"] == "executed"
-    assert [o["id"] for o in second["orders"]] == [first["order"]["id"]]
     assert len(test_client.get("/api/trading/orders").json()) == 1
 
 
@@ -94,8 +114,9 @@ def test_execute_decision_blocked_by_rule_judge(client):
 
     resp = test_client.post(f"/api/trading/decisions/{decision['id']}/execute")
     assert resp.status_code == 200
-    body = resp.json()
-    assert body["status"] == "blocked"
+
+    final = _wait_decision_terminal(test_client, decision["id"])
+    assert final["status"] == "blocked"
     assert test_client.get("/api/trading/orders").json() == []
 
 
@@ -120,6 +141,7 @@ def test_refresh_settlements_equity_flow(client, monkeypatch):
     # 数据源全部 stub，走 execute → refresh → settlements/equity 全链路
     decision = _make_decision(db_path, settlement_days=5)  # settle 2026-01-12
     test_client.post(f"/api/trading/decisions/{decision['id']}/execute")  # exec 2026-01-06
+    _wait_decision_terminal(test_client, decision["id"])
 
     monkeypatch.setattr(
         "server.trading.settlement.astock_quote_provider",

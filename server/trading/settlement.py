@@ -7,11 +7,13 @@ alphamind 日线缓存与 yfinance 沪深300，异常一律容忍（返回 None 
 
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 from typing import Any, Callable
 
 import pandas as pd
 
+from server.db.connection import session
 from server.db.trading_repositories import (
     adjust_account_cash,
     create_settlement,
@@ -41,6 +43,9 @@ BenchmarkProvider = Callable[[str, str], tuple[float, float] | None]
 # pending 订单 exec_date 顺延上限（工作日），超过则取消
 MAX_ORDER_DELAY_WORKDAYS = 15
 
+# refresh 全程互斥：并发两个 refresh 会读到同一批 pending 订单导致重复成交/双重扣款
+_refresh_lock = threading.Lock()
+
 
 def process_pending_orders(
     db_path: Path | str, broker: SimulatedBroker, as_of: str | None = None
@@ -53,17 +58,25 @@ def process_pending_orders(
             order["ticker"], order["side"], int(order["quantity"]), str(order["exec_date"])
         )
         if fill.status == STATUS_FILLED:
-            update_order(
-                db_path,
-                order["id"],
-                status=STATUS_FILLED,
-                fill_price=fill.fill_price,
-                fill_quantity=fill.fill_quantity,
-                fee_amount=fill.fee_amount,
-            )
-            amount = fill.fill_price * fill.fill_quantity
-            delta = -amount - fill.fee_amount if order["side"] == "buy" else amount - fill.fee_amount
-            adjust_account_cash(db_path, order["account_id"], round(delta, 2))
+            # 单事务保证原子性：订单状态与账户现金要么同时生效，要么同时回滚，
+            # 避免中途崩溃出现「已成交但钱没扣」的账目错乱
+            with session(db_path) as conn:
+                update_order(
+                    db_path,
+                    order["id"],
+                    conn=conn,
+                    status=STATUS_FILLED,
+                    fill_price=fill.fill_price,
+                    fill_quantity=fill.fill_quantity,
+                    fee_amount=fill.fee_amount,
+                )
+                amount = fill.fill_price * fill.fill_quantity
+                delta = (
+                    -amount - fill.fee_amount
+                    if order["side"] == "buy"
+                    else amount - fill.fee_amount
+                )
+                adjust_account_cash(db_path, order["account_id"], round(delta, 2), conn=conn)
             stats["filled"] += 1
         elif fill.status == STATUS_REJECTED:
             update_order(db_path, order["id"], status=STATUS_REJECTED, reject_reason=fill.reject_reason)
@@ -180,7 +193,25 @@ def refresh(
     benchmark_provider: BenchmarkProvider | None = None,
     as_of: str | None = None,
 ) -> dict[str, Any]:
-    """一键刷新：撮合 pending 订单 → 结算到期决策 → 净值快照 → 持仓监控。"""
+    """一键刷新：撮合 pending 订单 → 结算到期决策 → 净值快照 → 持仓监控。
+
+    全程持互斥锁；已有 refresh 在跑时立即返回 busy，避免重复成交。
+    """
+    if not _refresh_lock.acquire(blocking=False):
+        return {"status": "busy", "detail": "已有刷新任务在执行，请稍后再试"}
+    try:
+        return _refresh_locked(db_path, broker, close_provider, benchmark_provider, as_of)
+    finally:
+        _refresh_lock.release()
+
+
+def _refresh_locked(
+    db_path: Path | str,
+    broker: SimulatedBroker,
+    close_provider: CloseProvider,
+    benchmark_provider: BenchmarkProvider | None,
+    as_of: str | None,
+) -> dict[str, Any]:
     as_of = as_of or str(pd.Timestamp.now().date())
     order_stats = process_pending_orders(db_path, broker, as_of=as_of)
     settlements = settle_due_decisions(db_path, as_of, close_provider, benchmark_provider)

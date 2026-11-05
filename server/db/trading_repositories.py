@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 import uuid
 from pathlib import Path
 from typing import Any
 
 from server.core.config import DEFAULT_USER_ID, DEFAULT_WORKSPACE_ID
-from server.db.connection import connect
+from server.db.connection import session
 from server.trading.extraction import DecisionRecord
 from server.trading.settings import INITIAL_CASH
 
@@ -23,7 +24,7 @@ def _dict(row: Any) -> dict[str, Any]:
 
 def get_or_create_default_account(db_path: Path | str) -> dict[str, Any]:
     """返回默认用户的模拟账户，不存在则自动创建（初始资金见 settings）。"""
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         row = conn.execute(
             """
             SELECT * FROM trading_accounts
@@ -66,7 +67,7 @@ def create_decision(
     record: DecisionRecord,
 ) -> dict[str, Any]:
     decision_id = _uuid("dec")
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         conn.execute(
             """
             INSERT INTO trade_decisions
@@ -98,7 +99,7 @@ def create_decision(
 
 
 def get_decision_by_report(db_path: Path | str, report_id: str) -> dict[str, Any]:
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         row = conn.execute(
             "SELECT * FROM trade_decisions WHERE report_id = ? ORDER BY created_at DESC, id DESC LIMIT 1",
             (report_id,),
@@ -107,7 +108,7 @@ def get_decision_by_report(db_path: Path | str, report_id: str) -> dict[str, Any
 
 
 def get_decision(db_path: Path | str, decision_id: str) -> dict[str, Any]:
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         row = conn.execute(
             "SELECT * FROM trade_decisions WHERE id = ?", (decision_id,)
         ).fetchone()
@@ -115,8 +116,12 @@ def get_decision(db_path: Path | str, decision_id: str) -> dict[str, Any]:
 
 
 def update_decision(
-    db_path: Path | str, decision_id: str, **fields: Any
+    db_path: Path | str,
+    decision_id: str,
+    conn: sqlite3.Connection | None = None,
+    **fields: Any,
 ) -> dict[str, Any]:
+    """更新决策字段。传入 conn 时在调用方事务内执行。"""
     allowed = {"status", "judge_json"}
     updates = {key: value for key, value in fields.items() if key in allowed}
     if not updates:
@@ -124,15 +129,21 @@ def update_decision(
 
     assignments = ", ".join(f"{key} = ?" for key in updates)
     values = list(updates.values()) + [decision_id]
-    with connect(db_path) as conn:
-        conn.execute(
+
+    def _run(c: sqlite3.Connection) -> dict[str, Any]:
+        c.execute(
             f"UPDATE trade_decisions SET {assignments} WHERE id = ?",
             values,
         )
-        row = conn.execute(
+        row = c.execute(
             "SELECT * FROM trade_decisions WHERE id = ?", (decision_id,)
         ).fetchone()
-    return _dict(row)
+        return _dict(row)
+
+    if conn is not None:
+        return _run(conn)
+    with session(db_path) as owned:
+        return _run(owned)
 
 
 def create_order(
@@ -143,10 +154,13 @@ def create_order(
     side: str,
     quantity: int,
     exec_date: str,
+    conn: sqlite3.Connection | None = None,
 ) -> dict[str, Any]:
+    """创建 pending 订单。传入 conn 时在调用方事务内执行（下单+决策状态原子性）。"""
     order_id = _uuid("ord")
-    with connect(db_path) as conn:
-        conn.execute(
+
+    def _run(c: sqlite3.Connection) -> dict[str, Any]:
+        c.execute(
             """
             INSERT INTO trade_orders
             (id, decision_id, account_id, ticker, side, quantity, status, exec_date)
@@ -154,10 +168,15 @@ def create_order(
             """,
             (order_id, decision_id, account_id, ticker, side, quantity, exec_date),
         )
-        row = conn.execute(
+        row = c.execute(
             "SELECT * FROM trade_orders WHERE id = ?", (order_id,)
         ).fetchone()
-    return _dict(row)
+        return _dict(row)
+
+    if conn is not None:
+        return _run(conn)
+    with session(db_path) as owned:
+        return _run(owned)
 
 
 def list_orders(
@@ -176,13 +195,13 @@ def list_orders(
     if conditions:
         sql += " WHERE " + " AND ".join(conditions)
     sql += " ORDER BY created_at DESC, rowid DESC"
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         rows = conn.execute(sql, values).fetchall()
     return [_dict(row) for row in rows]
 
 
 def list_orders_by_decision(db_path: Path | str, decision_id: str) -> list[dict[str, Any]]:
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         rows = conn.execute(
             "SELECT * FROM trade_orders WHERE decision_id = ? ORDER BY created_at ASC, rowid ASC",
             (decision_id,),
@@ -190,28 +209,42 @@ def list_orders_by_decision(db_path: Path | str, decision_id: str) -> list[dict[
     return [_dict(row) for row in rows]
 
 
-def update_order(db_path: Path | str, order_id: str, **fields: Any) -> dict[str, Any]:
+def update_order(
+    db_path: Path | str, order_id: str, conn: sqlite3.Connection | None = None, **fields: Any
+) -> dict[str, Any]:
+    """更新订单字段。传入 conn 时在调用方事务内执行（撮合+扣款原子性）。"""
     allowed = {"status", "exec_date", "fill_price", "fill_quantity", "fee_amount", "reject_reason"}
     updates = {key: value for key, value in fields.items() if key in allowed}
     if not updates:
-        with connect(db_path) as conn:
+        if conn is not None:
             row = conn.execute(
+                "SELECT * FROM trade_orders WHERE id = ?", (order_id,)
+            ).fetchone()
+            return _dict(row)
+        with session(db_path) as owned:
+            row = owned.execute(
                 "SELECT * FROM trade_orders WHERE id = ?", (order_id,)
             ).fetchone()
         return _dict(row)
 
     assignments = ", ".join(f"{key} = ?" for key in updates)
     values = list(updates.values()) + [order_id]
-    with connect(db_path) as conn:
-        conn.execute(f"UPDATE trade_orders SET {assignments} WHERE id = ?", values)
-        row = conn.execute(
+
+    def _run(c: sqlite3.Connection) -> dict[str, Any]:
+        c.execute(f"UPDATE trade_orders SET {assignments} WHERE id = ?", values)
+        row = c.execute(
             "SELECT * FROM trade_orders WHERE id = ?", (order_id,)
         ).fetchone()
-    return _dict(row)
+        return _dict(row)
+
+    if conn is not None:
+        return _run(conn)
+    with session(db_path) as owned:
+        return _run(owned)
 
 
 def list_decisions(db_path: Path | str) -> list[dict[str, Any]]:
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         rows = conn.execute(
             "SELECT * FROM trade_decisions ORDER BY created_at DESC, rowid DESC"
         ).fetchall()
@@ -220,7 +253,7 @@ def list_decisions(db_path: Path | str) -> list[dict[str, Any]]:
 
 def get_latest_decision_by_ticker(db_path: Path | str, ticker: str) -> dict[str, Any]:
     """该 ticker 最新一条决策（监控取止损/目标价阈值用）。"""
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         row = conn.execute(
             "SELECT * FROM trade_decisions WHERE ticker = ? ORDER BY created_at DESC, rowid DESC LIMIT 1",
             (ticker,),
@@ -238,7 +271,7 @@ def create_alert(
     message: str,
 ) -> dict[str, Any]:
     alert_id = _uuid("alert")
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         conn.execute(
             """
             INSERT INTO trade_alerts
@@ -254,7 +287,7 @@ def create_alert(
 
 
 def has_open_alert(db_path: Path | str, ticker: str, kind: str) -> bool:
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         row = conn.execute(
             "SELECT 1 FROM trade_alerts WHERE ticker = ? AND kind = ? AND status = 'open' LIMIT 1",
             (ticker, kind),
@@ -269,13 +302,13 @@ def list_alerts(db_path: Path | str, status: str | None = None) -> list[dict[str
         sql += " WHERE status = ?"
         values.append(status)
     sql += " ORDER BY created_at DESC, rowid DESC"
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         rows = conn.execute(sql, values).fetchall()
     return [_dict(row) for row in rows]
 
 
 def ack_alert(db_path: Path | str, alert_id: str) -> dict[str, Any]:
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         conn.execute(
             "UPDATE trade_alerts SET status = 'acked' WHERE id = ?", (alert_id,)
         )
@@ -288,7 +321,7 @@ def ack_alert(db_path: Path | str, alert_id: str) -> dict[str, Any]:
 def list_latest_equity_snapshots(
     db_path: Path | str, account_id: str, limit: int = 2
 ) -> list[dict[str, Any]]:
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         rows = conn.execute(
             "SELECT * FROM account_equity WHERE account_id = ? ORDER BY date DESC, rowid DESC LIMIT ?",
             (account_id, limit),
@@ -297,24 +330,35 @@ def list_latest_equity_snapshots(
 
 
 def get_account(db_path: Path | str, account_id: str) -> dict[str, Any]:
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         row = conn.execute(
             "SELECT * FROM trading_accounts WHERE id = ?", (account_id,)
         ).fetchone()
     return _dict(row)
 
 
-def adjust_account_cash(db_path: Path | str, account_id: str, delta: float) -> dict[str, Any]:
-    """成交后调整账户现金（delta 为负表示买入支出）。"""
-    with connect(db_path) as conn:
-        conn.execute(
+def adjust_account_cash(
+    db_path: Path | str,
+    account_id: str,
+    delta: float,
+    conn: sqlite3.Connection | None = None,
+) -> dict[str, Any]:
+    """成交后调整账户现金（delta 为负表示买入支出）。传入 conn 时在调用方事务内执行。"""
+
+    def _run(c: sqlite3.Connection) -> dict[str, Any]:
+        c.execute(
             "UPDATE trading_accounts SET cash = cash + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
             (delta, account_id),
         )
-        row = conn.execute(
+        row = c.execute(
             "SELECT * FROM trading_accounts WHERE id = ?", (account_id,)
         ).fetchone()
-    return _dict(row)
+        return _dict(row)
+
+    if conn is not None:
+        return _run(conn)
+    with session(db_path) as owned:
+        return _run(owned)
 
 
 def create_settlement(
@@ -329,7 +373,7 @@ def create_settlement(
     outcome: str,
 ) -> dict[str, Any]:
     settlement_id = _uuid("stl")
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         conn.execute(
             """
             INSERT INTO trade_settlements
@@ -356,7 +400,7 @@ def create_settlement(
 
 
 def get_settlement_by_decision(db_path: Path | str, decision_id: str) -> dict[str, Any]:
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         row = conn.execute(
             "SELECT * FROM trade_settlements WHERE decision_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1",
             (decision_id,),
@@ -365,7 +409,7 @@ def get_settlement_by_decision(db_path: Path | str, decision_id: str) -> dict[st
 
 
 def list_settlements(db_path: Path | str) -> list[dict[str, Any]]:
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         rows = conn.execute(
             "SELECT * FROM trade_settlements ORDER BY created_at DESC, rowid DESC"
         ).fetchall()
@@ -380,7 +424,7 @@ def upsert_equity_snapshot(
     market_value: float,
     total_equity: float,
 ) -> dict[str, Any]:
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         conn.execute(
             """
             INSERT INTO account_equity (id, account_id, date, cash, market_value, total_equity)
@@ -400,7 +444,7 @@ def upsert_equity_snapshot(
 
 
 def list_equity_snapshots(db_path: Path | str, account_id: str) -> list[dict[str, Any]]:
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         rows = conn.execute(
             "SELECT * FROM account_equity WHERE account_id = ? ORDER BY date ASC, rowid ASC",
             (account_id,),
@@ -417,7 +461,7 @@ def record_judge_call(
     detail: dict[str, Any],
 ) -> dict[str, Any]:
     call_id = _uuid("judge")
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         conn.execute(
             """
             INSERT INTO judge_calls
@@ -442,7 +486,7 @@ def record_judge_call(
 
 
 def list_judge_calls(db_path: Path | str, decision_id: str) -> list[dict[str, Any]]:
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         rows = conn.execute(
             "SELECT * FROM judge_calls WHERE decision_id = ? ORDER BY created_at ASC, rowid ASC",
             (decision_id,),

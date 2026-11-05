@@ -2,16 +2,21 @@
 
 持仓不落表，从已成交订单推导；A 股 T+1：买入当日不可卖。
 护栏：单票仓位截断、现金与总仓位上限约束、日亏损熔断。
+执行模式：execute_decision 同步（测试用），execute_decision_async
+后台线程执行（LLMJudge 网络调用可达数十秒，不能阻塞请求线程）。
 """
 
 from __future__ import annotations
 
 import json
+import logging
+import threading
 from pathlib import Path
 from typing import Any, Callable
 
 import pandas as pd
 
+from server.db.connection import session
 from server.db.trading_repositories import (
     create_order,
     get_decision,
@@ -46,6 +51,9 @@ _RATING_DIRECTION = {
 
 class OrderError(Exception):
     """决策不存在等不可恢复错误。"""
+
+
+logger = logging.getLogger(__name__)
 
 
 def resolve_direction(decision: dict[str, Any]) -> str | None:
@@ -122,6 +130,52 @@ class OrderService:
         self.judge = judge
         self.ref_price_provider = ref_price_provider
 
+    def execute_decision_async(
+        self, decision_id: str, judge_context: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """后台线程执行决策，API 立即返回。
+
+        决策状态流转：draft → executing → executed/skipped/blocked/rejected/failed。
+        前端通过轮询决策列表看到终态。幂等：非 draft 状态直接返回当前状态。
+        """
+        decision = get_decision(self.db_path, decision_id)
+        if not decision:
+            raise OrderError("决策不存在")
+        if decision["status"] != "draft":
+            return {"status": decision["status"], "async": False}
+
+        # 占位中间状态：并发重复点击时第二个请求会看到 executing 而直接返回
+        updated = update_decision(self.db_path, decision_id, status="executing")
+        if updated.get("status") != "executing":
+            return {"status": updated["status"], "async": False}
+
+        threading.Thread(
+            target=self._execute_background,
+            args=(decision_id, judge_context),
+            daemon=True,
+        ).start()
+        return {"status": "executing", "async": True}
+
+    def _execute_background(
+        self, decision_id: str, judge_context: dict[str, Any] | None
+    ) -> None:
+        """后台执行体：任何异常都落到决策终态，不悬在 executing。"""
+        try:
+            decision = get_decision(self.db_path, decision_id)
+            if not decision:
+                logger.error("后台执行决策 %s 不存在", decision_id)
+                return
+            self._execute_decision_core(decision, judge_context)
+        except Exception as exc:
+            logger.exception("后台执行决策 %s 失败", decision_id)
+            try:
+                update_decision(
+                    self.db_path, decision_id, status="failed",
+                    judge_json=json.dumps({"error": str(exc)}, ensure_ascii=False),
+                )
+            except Exception:
+                logger.exception("回写决策 %s 失败状态失败", decision_id)
+
     def execute_decision(
         self, decision_id: str, judge_context: dict[str, Any] | None = None
     ) -> dict[str, Any]:
@@ -129,10 +183,15 @@ class OrderService:
 
         返回 ``{"status": executed|skipped|blocked|rejected, ...}``；
         幂等：已执行的决策再次调用直接返回已有订单。
+        同步执行（无网络 Judge 时毫秒级）；API 层用 execute_decision_async。
         """
         decision = get_decision(self.db_path, decision_id)
         if not decision:
             raise OrderError("决策不存在")
+
+        if decision["status"] == "executing":
+            # 异步执行中：直接返回，等后台线程落终态
+            return {"status": "executing", "reason": "决策正在后台执行中"}
 
         if decision["status"] == "executed":
             return {
@@ -140,6 +199,13 @@ class OrderService:
                 "orders": list_orders_by_decision(self.db_path, decision_id),
             }
 
+        return self._execute_decision_core(decision, judge_context)
+
+    def _execute_decision_core(
+        self, decision: dict[str, Any], judge_context: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """实际执行逻辑（后台线程入口，不做状态守卫）。"""
+        decision_id = decision["id"]
         record = DecisionRecord(
             rating=decision["rating"],
             action=decision["action"],
@@ -164,6 +230,7 @@ class OrderService:
             )
             if result.verdict == VERDICT_BLOCK:
                 blocked = [c for c in result.checks if c.get("severity") == VERDICT_BLOCK]
+                update_decision(self.db_path, decision_id, status="blocked")
                 return {"status": "blocked", "reason": "; ".join(
                     c.get("message", "") for c in blocked
                 )}
@@ -182,18 +249,22 @@ class OrderService:
         else:
             outcome = self._build_sell_order(decision, account, positions, exec_date)
         if outcome.get("status") == "rejected":
+            update_decision(self.db_path, decision_id, status="rejected")
             return outcome
 
-        order = create_order(
-            self.db_path,
-            decision_id=decision_id,
-            account_id=account["id"],
-            ticker=decision["ticker"],
-            side=outcome["side"],
-            quantity=outcome["quantity"],
-            exec_date=exec_date,
-        )
-        update_decision(self.db_path, decision_id, status="executed")
+        # 单事务保证原子性：订单落库与决策状态变更同时生效
+        with session(self.db_path) as conn:
+            order = create_order(
+                self.db_path,
+                decision_id=decision_id,
+                account_id=account["id"],
+                ticker=decision["ticker"],
+                side=outcome["side"],
+                quantity=outcome["quantity"],
+                exec_date=exec_date,
+                conn=conn,
+            )
+            update_decision(self.db_path, decision_id, conn=conn, status="executed")
         return {"status": "executed", "order": order}
 
     # ---- 买入 ----

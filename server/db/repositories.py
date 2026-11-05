@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from server.core.config import DEFAULT_USER_ID, DEFAULT_WORKSPACE_ID
-from server.db.connection import connect
+from server.db.connection import session
 
 
 def _uuid(prefix: str) -> str:
@@ -20,7 +20,7 @@ def _dict(row: Any) -> dict[str, Any]:
 
 
 def upsert_default_identity(db_path: Path | str) -> None:
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         conn.execute(
             "INSERT OR IGNORE INTO users (id, display_name) VALUES (?, ?)",
             (DEFAULT_USER_ID, "Default User"),
@@ -33,7 +33,7 @@ def upsert_default_identity(db_path: Path | str) -> None:
 
 def create_research_task(db_path: Path | str, ticker: str, trade_date: str) -> dict[str, Any]:
     task_id = _uuid("task")
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         conn.execute(
             """
             INSERT INTO research_tasks
@@ -52,7 +52,7 @@ def create_research_task_if_none_active(
     trade_date: str,
 ) -> dict[str, Any]:
     task_id = _uuid("task")
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         conn.execute("BEGIN IMMEDIATE")
         active = conn.execute(
             """
@@ -93,7 +93,7 @@ def update_research_task(db_path: Path | str, task_id: str, **fields: Any) -> di
 
     assignments = ", ".join(f"{key} = ?" for key in updates)
     values = list(updates.values()) + [task_id]
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         conn.execute(
             f"UPDATE research_tasks SET {assignments}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
             values,
@@ -103,7 +103,7 @@ def update_research_task(db_path: Path | str, task_id: str, **fields: Any) -> di
 
 
 def get_research_task(db_path: Path | str, task_id: str) -> dict[str, Any]:
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         row = conn.execute("SELECT * FROM research_tasks WHERE id = ?", (task_id,)).fetchone()
     return _dict(row)
 
@@ -117,7 +117,7 @@ def upsert_report(
     state_path: str,
 ) -> dict[str, Any]:
     report_id = _uuid("report")
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         conn.execute(
             """
             INSERT INTO research_reports
@@ -140,7 +140,7 @@ def upsert_report(
 
 
 def list_reports(db_path: Path | str) -> list[dict[str, Any]]:
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         rows = conn.execute(
             "SELECT * FROM research_reports ORDER BY created_at DESC, trade_date DESC, id DESC"
         ).fetchall()
@@ -148,7 +148,7 @@ def list_reports(db_path: Path | str) -> list[dict[str, Any]]:
 
 
 def list_active_research_tasks(db_path: Path | str) -> list[dict[str, Any]]:
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         rows = conn.execute(
             """
             SELECT * FROM research_tasks
@@ -161,7 +161,7 @@ def list_active_research_tasks(db_path: Path | str) -> list[dict[str, Any]]:
 
 
 def cancel_active_research_tasks(db_path: Path | str, message: str) -> int:
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         cursor = conn.execute(
             """
             UPDATE research_tasks
@@ -178,14 +178,14 @@ def cancel_active_research_tasks(db_path: Path | str, message: str) -> int:
 
 
 def get_report(db_path: Path | str, report_id: str) -> dict[str, Any]:
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         row = conn.execute("SELECT * FROM research_reports WHERE id = ?", (report_id,)).fetchone()
     return _dict(row)
 
 
 def create_agent_session(db_path: Path | str, title: str = "默认会话") -> dict[str, Any]:
     session_id = _uuid("session")
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         conn.execute(
             """
             INSERT INTO agent_sessions (id, user_id, workspace_id, title)
@@ -198,7 +198,7 @@ def create_agent_session(db_path: Path | str, title: str = "默认会话") -> di
 
 
 def get_agent_session(db_path: Path | str, session_id: str) -> dict[str, Any]:
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         row = conn.execute("SELECT * FROM agent_sessions WHERE id = ?", (session_id,)).fetchone()
     return _dict(row)
 
@@ -211,7 +211,7 @@ def add_agent_message(
     tool_calls: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     message_id = _uuid("msg")
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         conn.execute(
             """
             INSERT INTO agent_messages (id, session_id, role, content, tool_calls_json)
@@ -226,7 +226,7 @@ def add_agent_message(
 
 
 def list_agent_messages(db_path: Path | str, session_id: str) -> list[dict[str, Any]]:
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         rows = conn.execute(
             "SELECT * FROM agent_messages WHERE session_id = ? ORDER BY created_at ASC, rowid ASC",
             (session_id,),
@@ -244,7 +244,7 @@ def save_page_context(
     context: dict[str, Any],
 ) -> dict[str, Any]:
     context_id = _uuid("ctx")
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         conn.execute("DELETE FROM page_contexts WHERE session_id = ?", (session_id,))
         conn.execute(
             """
@@ -271,7 +271,7 @@ def save_page_context(
 
 
 def get_page_context(db_path: Path | str, session_id: str) -> dict[str, Any]:
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         row = conn.execute(
             "SELECT * FROM page_contexts WHERE session_id = ?",
             (session_id,),
@@ -290,13 +290,13 @@ def list_watchlist(db_path: Path | str, enabled_only: bool = False) -> list[dict
     if enabled_only:
         sql += " WHERE enabled = 1"
     sql += " ORDER BY created_at ASC, rowid ASC"
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         rows = conn.execute(sql).fetchall()
     return [_dict(row) for row in rows]
 
 
 def add_watchlist_ticker(db_path: Path | str, ticker: str) -> dict[str, Any]:
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         conn.execute(
             """
             INSERT OR IGNORE INTO watchlist (id, user_id, workspace_id, ticker)
@@ -311,14 +311,14 @@ def add_watchlist_ticker(db_path: Path | str, ticker: str) -> dict[str, Any]:
 
 
 def remove_watchlist_ticker(db_path: Path | str, ticker: str) -> bool:
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         cursor = conn.execute("DELETE FROM watchlist WHERE ticker = ?", (ticker,))
     return cursor.rowcount > 0
 
 
 def get_automation_settings(db_path: Path | str) -> dict[str, Any]:
     """读自动投研设置（单行表，不存在则给默认值）。"""
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         row = conn.execute("SELECT * FROM automation_settings WHERE id = 1").fetchone()
     if row:
         return _dict(row)
@@ -344,7 +344,7 @@ def update_automation_settings(
 
     assignments = ", ".join(f"{key} = ?" for key in updates)
     values = list(updates.values())
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         conn.execute(
             """
             INSERT INTO automation_settings (id, enabled, run_time) VALUES (1, 0, '16:30')
@@ -364,7 +364,7 @@ def update_automation_settings(
 
 def upsert_stock_meta(db_path: Path | str, universe: str, rows: list[dict[str, Any]]) -> int:
     """整池替换指定 universe 的成分股元信息（成分调整后旧的剔除）。"""
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         conn.execute("DELETE FROM stock_meta WHERE universe = ?", (universe,))
         conn.executemany(
             """
@@ -383,7 +383,7 @@ def list_stock_meta(db_path: Path | str, universe: str | None = None) -> list[di
         sql += " WHERE universe = ?"
         params = (universe,)
     sql += " ORDER BY symbol ASC"
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         rows = conn.execute(sql, params).fetchall()
     return [_dict(row) for row in rows]
 
@@ -392,7 +392,7 @@ def upsert_bars(db_path: Path | str, symbol: str, bars: list[dict[str, Any]]) ->
     """批量写入日线（按主键 symbol+date 幂等覆盖）。"""
     if not bars:
         return 0
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         conn.executemany(
             """
             INSERT OR REPLACE INTO bars (symbol, date, open, high, low, close, volume, amount)
@@ -430,14 +430,14 @@ def get_bars(
         sql += " AND date <= ?"
         params.append(end)
     sql += " ORDER BY date ASC"
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         rows = conn.execute(sql, params).fetchall()
     return [_dict(row) for row in rows]
 
 
 def get_market_stats(db_path: Path | str) -> dict[str, Any]:
     """底座数据汇总：股票数 / K 线总数 / 最早最晚日期。"""
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         symbols = conn.execute("SELECT COUNT(*) AS n FROM stock_meta").fetchone()["n"]
         bars = conn.execute("SELECT COUNT(*) AS n FROM bars").fetchone()["n"]
         row = conn.execute(
@@ -453,7 +453,7 @@ def get_market_stats(db_path: Path | str) -> dict[str, Any]:
 
 def create_sync_run(db_path: Path | str, universe: str, total_symbols: int) -> dict[str, Any]:
     run_id = _uuid("msync")
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         conn.execute(
             """
             INSERT INTO market_sync_runs (id, universe, status, total_symbols)
@@ -468,18 +468,18 @@ def create_sync_run(db_path: Path | str, universe: str, total_symbols: int) -> d
 def update_sync_run(db_path: Path | str, run_id: str, **fields: Any) -> dict[str, Any]:
     if fields:
         assignments = ", ".join(f"{key} = ?" for key in fields)
-        with connect(db_path) as conn:
+        with session(db_path) as conn:
             conn.execute(
                 f"UPDATE market_sync_runs SET {assignments} WHERE id = ?",
                 [*fields.values(), run_id],
             )
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         row = conn.execute("SELECT * FROM market_sync_runs WHERE id = ?", (run_id,)).fetchone()
     return _dict(row)
 
 
 def get_latest_sync_run(db_path: Path | str, universe: str) -> dict[str, Any]:
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         row = conn.execute(
             """
             SELECT * FROM market_sync_runs
@@ -494,7 +494,7 @@ def get_latest_sync_run(db_path: Path | str, universe: str) -> dict[str, Any]:
 
 def interrupt_stale_sync_runs(db_path: Path | str) -> int:
     """服务启动时把遗留的 running 同步标记为失败（线程已随进程终止）。"""
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         cursor = conn.execute(
             """
             UPDATE market_sync_runs
@@ -525,7 +525,7 @@ def fetch_all_bars(
         sql += f" {'AND' if params else 'WHERE'} date <= ?"
         params.append(end)
     sql += " ORDER BY date ASC, symbol ASC"
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         rows = conn.execute(sql, params).fetchall()
     return [_dict(row) for row in rows]
 
@@ -540,7 +540,7 @@ def save_factor_eval(
     summary: dict[str, Any],
 ) -> dict[str, Any]:
     eval_id = _uuid("feval")
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         conn.execute(
             """
             INSERT INTO factor_evals
@@ -580,7 +580,7 @@ def list_factor_evals(
         params.append(factor_key)
     sql += " ORDER BY created_at DESC, id DESC LIMIT ?"
     params.append(limit)
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         rows = conn.execute(sql, params).fetchall()
     return [_dict(row) for row in rows]
 
@@ -599,7 +599,7 @@ def save_strategy_run(
     detail: dict[str, Any],
 ) -> dict[str, Any]:
     run_id = _uuid("srun")
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         conn.execute(
             """
             INSERT INTO strategy_runs
@@ -647,12 +647,12 @@ def list_strategy_runs(
         params.append(name)
     sql += " ORDER BY created_at DESC, id DESC LIMIT ?"
     params.append(limit)
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         rows = conn.execute(sql, params).fetchall()
     return [_dict(row) for row in rows]
 
 
 def get_strategy_run(db_path: Path | str, run_id: str) -> dict[str, Any] | None:
-    with connect(db_path) as conn:
+    with session(db_path) as conn:
         row = conn.execute("SELECT * FROM strategy_runs WHERE id = ?", (run_id,)).fetchone()
     return _dict(row) if row else None

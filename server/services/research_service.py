@@ -25,6 +25,8 @@ logger = logging.getLogger(__name__)
 
 ResearchRunner = Callable[[str, str, Callable[..., None]], dict[str, Any]]
 TERMINAL_STATUSES = {"completed", "failed", "cancelled"}
+# SSE 事件缓冲上限：超过后裁剪最旧事件，防止长期运行内存无界
+MAX_EVENTS_PER_TASK = 500
 
 
 def default_runner(ticker: str, trade_date: str, emit: Callable[..., None]) -> dict[str, Any]:
@@ -229,3 +231,6 @@ class ResearchService:
         }
         with self._lock:
             self._events[task_id].append(event)
+            # 已终态且事件超上限的任务，裁剪旧事件（保留最新 200 条供 SSE 补发）
+            if len(self._events[task_id]) > MAX_EVENTS_PER_TASK:
+                del self._events[task_id][:-200]

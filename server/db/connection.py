@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 
@@ -280,6 +282,17 @@ CREATE TABLE IF NOT EXISTS strategy_runs (
 );
 """
 
+# 高频查询路径索引（持仓推导、决策回查、Judge 归因）
+SCHEMA_INDEX_SQL = """
+CREATE INDEX IF NOT EXISTS idx_trade_orders_status_account ON trade_orders (status, account_id);
+CREATE INDEX IF NOT EXISTS idx_trade_orders_decision ON trade_orders (decision_id);
+CREATE INDEX IF NOT EXISTS idx_trade_decisions_report ON trade_decisions (report_id);
+CREATE INDEX IF NOT EXISTS idx_trade_decisions_ticker ON trade_decisions (ticker);
+CREATE INDEX IF NOT EXISTS idx_judge_calls_decision ON judge_calls (decision_id);
+CREATE INDEX IF NOT EXISTS idx_trade_settlements_decision ON trade_settlements (decision_id);
+CREATE INDEX IF NOT EXISTS idx_account_equity_account ON account_equity (account_id, date);
+"""
+
 # 已有库的结构迁移：新增列补齐（CREATE TABLE IF NOT EXISTS 不会改动旧表）
 _MIGRATIONS = [
     (
@@ -306,13 +319,35 @@ def _migrate(conn: sqlite3.Connection) -> None:
 def connect(db_path: Path | str) -> sqlite3.Connection:
     path = Path(db_path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(path)
+    conn = sqlite3.connect(path, timeout=5.0)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    # 并发写安全：API 线程 + 调度线程 + SSE 轮询共用一个库文件
+    conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute("PRAGMA busy_timeout = 5000")
     return conn
+
+
+@contextmanager
+def session(db_path: Path | str) -> Iterator[sqlite3.Connection]:
+    """带关闭的连接上下文：成功提交、异常回滚、退出必关连接。
+
+    sqlite3.Connection 自身作上下文管理器只 commit/rollback 不 close，
+    高频调用下连接会堆积到 GC 才释放，必须用本函数替代裸 with connect()。
+    """
+    conn = connect(db_path)
+    try:
+        yield conn
+        conn.commit()
+    except BaseException:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def init_db(db_path: Path | str) -> None:
     with connect(db_path) as conn:
         conn.executescript(SCHEMA_SQL)
         _migrate(conn)
+        conn.executescript(SCHEMA_INDEX_SQL)
