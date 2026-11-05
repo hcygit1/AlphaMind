@@ -11,6 +11,11 @@ type ShellProps = PropsWithChildren<{
 const routeTitles: Record<RouteKey, string> = {
   "deep-research": "Deep Research",
   reports: "Reports",
+  "factor-lab": "Factor Lab",
+  "strategy-lab": "Strategy Lab",
+  "paper-trading": "Paper Trading",
+  "orders-positions": "Orders & Positions",
+  "review-analytics": "Review & Analytics",
   settings: "Settings"
 };
 

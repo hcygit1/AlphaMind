@@ -19,11 +19,11 @@ type Item =
 const items: Item[] = [
   { label: "Deep Research", route: "deep-research", icon: <Bot size={18} aria-hidden="true" /> },
   { label: "Reports", route: "reports", icon: <FileText size={18} aria-hidden="true" /> },
-  { label: "Factor Lab", disabled: true, icon: <FlaskConical size={18} aria-hidden="true" /> },
-  { label: "Strategy Lab", disabled: true, icon: <LineChart size={18} aria-hidden="true" /> },
-  { label: "Paper Trading", disabled: true, icon: <WalletCards size={18} aria-hidden="true" /> },
-  { label: "Orders & Positions", disabled: true, icon: <ClipboardList size={18} aria-hidden="true" /> },
-  { label: "Review & Analytics", disabled: true, icon: <BarChart3 size={18} aria-hidden="true" /> },
+  { label: "Factor Lab", route: "factor-lab", icon: <FlaskConical size={18} aria-hidden="true" /> },
+  { label: "Strategy Lab", route: "strategy-lab", icon: <LineChart size={18} aria-hidden="true" /> },
+  { label: "Paper Trading", route: "paper-trading", icon: <WalletCards size={18} aria-hidden="true" /> },
+  { label: "Orders & Positions", route: "orders-positions", icon: <ClipboardList size={18} aria-hidden="true" /> },
+  { label: "Review & Analytics", route: "review-analytics", icon: <BarChart3 size={18} aria-hidden="true" /> },
   { label: "Settings", route: "settings", icon: <Settings size={18} aria-hidden="true" /> }
 ];
 
