@@ -6,8 +6,20 @@ from langgraph.prebuilt import ToolNode
 
 from alphamind.agents import *
 from alphamind.agents.utils.agent_states import AgentState
+from alphamind.agents.utils.agent_utils import wrap_analyst_node
 
 from .conditional_logic import ConditionalLogic
+
+# analyst 注册表：key -> (节点工厂, 报告 state key, 展示名)
+ANALYST_REGISTRY: Dict[str, tuple] = {
+    "market": (create_market_analyst, "market_report", "Market Analyst"),
+    "social": (create_social_media_analyst, "sentiment_report", "Social Analyst"),
+    "news": (create_news_analyst, "news_report", "News Analyst"),
+    "fundamentals": (create_fundamentals_analyst, "fundamentals_report", "Fundamentals Analyst"),
+    "policy": (create_policy_analyst, "policy_report", "Policy Analyst"),
+    "hot_money": (create_hot_money_tracker, "hot_money_report", "Hot Money Tracker"),
+    "lockup": (create_lockup_watcher, "lockup_report", "Lockup Watcher"),
+}
 
 
 class GraphSetup:
@@ -44,59 +56,24 @@ class GraphSetup:
         if len(selected_analysts) == 0:
             raise ValueError("Trading Agents Graph Setup Error: no analysts selected!")
 
-        # Create analyst nodes
+        unknown = [a for a in selected_analysts if a not in ANALYST_REGISTRY]
+        if unknown:
+            raise ValueError(
+                f"Trading Agents Graph Setup Error: unknown analysts {unknown}; "
+                f"available: {list(ANALYST_REGISTRY)}"
+            )
+
+        # Create analyst nodes（注册表驱动 + 统一异常兜底）
         analyst_nodes = {}
         delete_nodes = {}
         tool_nodes = {}
 
-        if "market" in selected_analysts:
-            analyst_nodes["market"] = create_market_analyst(
-                self.quick_thinking_llm
-            )
-            delete_nodes["market"] = create_msg_delete()
-            tool_nodes["market"] = self.tool_nodes["market"]
-
-        if "social" in selected_analysts:
-            analyst_nodes["social"] = create_social_media_analyst(
-                self.quick_thinking_llm
-            )
-            delete_nodes["social"] = create_msg_delete()
-            tool_nodes["social"] = self.tool_nodes["social"]
-
-        if "news" in selected_analysts:
-            analyst_nodes["news"] = create_news_analyst(
-                self.quick_thinking_llm
-            )
-            delete_nodes["news"] = create_msg_delete()
-            tool_nodes["news"] = self.tool_nodes["news"]
-
-        if "fundamentals" in selected_analysts:
-            analyst_nodes["fundamentals"] = create_fundamentals_analyst(
-                self.quick_thinking_llm
-            )
-            delete_nodes["fundamentals"] = create_msg_delete()
-            tool_nodes["fundamentals"] = self.tool_nodes["fundamentals"]
-
-        if "policy" in selected_analysts:
-            analyst_nodes["policy"] = create_policy_analyst(
-                self.quick_thinking_llm
-            )
-            delete_nodes["policy"] = create_msg_delete()
-            tool_nodes["policy"] = self.tool_nodes["policy"]
-
-        if "hot_money" in selected_analysts:
-            analyst_nodes["hot_money"] = create_hot_money_tracker(
-                self.quick_thinking_llm
-            )
-            delete_nodes["hot_money"] = create_msg_delete()
-            tool_nodes["hot_money"] = self.tool_nodes["hot_money"]
-
-        if "lockup" in selected_analysts:
-            analyst_nodes["lockup"] = create_lockup_watcher(
-                self.quick_thinking_llm
-            )
-            delete_nodes["lockup"] = create_msg_delete()
-            tool_nodes["lockup"] = self.tool_nodes["lockup"]
+        for analyst_type in selected_analysts:
+            factory, report_key, label = ANALYST_REGISTRY[analyst_type]
+            node = factory(self.quick_thinking_llm)
+            analyst_nodes[analyst_type] = wrap_analyst_node(node, report_key, label)
+            delete_nodes[analyst_type] = create_msg_delete()
+            tool_nodes[analyst_type] = self.tool_nodes[analyst_type]
 
         # Create quality gate node
         quality_gate_node = create_quality_gate(self.quick_thinking_llm)

@@ -24,7 +24,6 @@ import math
 import re as _re
 import time
 import uuid
-import urllib.request
 
 import pandas as pd
 import requests as _requests
@@ -145,13 +144,23 @@ _mootdx_client = None
 
 
 def _get_mootdx_client():
-    """Lazy-init mootdx Quotes client (TCP connection, reusable)."""
+    """Lazy-init mootdx Quotes client (TCP connection, reusable).
+
+    长时间运行后 TCP 连接可能被服务端断开：调用方捕获异常后调用
+    reset_mootdx_client() 强制下次重建连接。
+    """
     global _mootdx_client
     if _mootdx_client is None:
         from mootdx.quotes import Quotes
 
-        _mootdx_client = Quotes.factory(market="std")
+        _mootdx_client = Quotes.factory(market="std", timeout=15)
     return _mootdx_client
+
+
+def reset_mootdx_client() -> None:
+    """丢弃现有 mootdx 连接（断连/超时后由调用方触发，下次取用时重建）。"""
+    global _mootdx_client
+    _mootdx_client = None
 
 
 # ---------------------------------------------------------------------------
@@ -165,10 +174,14 @@ def _tencent_quote(codes: list[str]) -> dict[str, dict]:
     """
     prefixed = [f"{_get_prefix(c)}{c}" for c in codes]
     url = "https://qt.gtimg.cn/q=" + ",".join(prefixed)
-    req = urllib.request.Request(url)
-    req.add_header("User-Agent", "Mozilla/5.0")
-    resp = urllib.request.urlopen(req, timeout=10)
-    raw = resp.read().decode("gbk")
+    raw = _http_get_json(
+        url,
+        headers={"User-Agent": "Mozilla/5.0"},
+        timeout=10,
+        retries=2,
+        parse="text",
+        encoding="gbk",
+    )
 
     result = {}
     for line in raw.strip().split(";"):
@@ -209,15 +222,38 @@ _UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
 
 def _get_json(url: str, params: dict) -> dict:
     """东财 push2 接口 GET + 失败重试（偶发断连/限流）。"""
+    return _http_get_json(url, params=params, headers={"User-Agent": _UA})
+
+
+def _http_get_json(
+    url: str,
+    *,
+    params: dict | None = None,
+    headers: dict | None = None,
+    timeout: int = 15,
+    retries: int = 3,
+    parse: str = "json",
+    encoding: str | None = None,
+):
+    """统一 HTTP GET：重试 + 指数退避。
+
+    parse="json" 返回 dict；parse="text" 时按 encoding（如 gbk）解码返回 str。
+    全部尝试失败后抛最后一次异常，由调用方的 except 分支决定降级行为。
+    """
     last: Exception | None = None
-    for attempt in range(3):
+    for attempt in range(retries):
         try:
-            r = _requests.get(url, params=params, headers={"User-Agent": _UA}, timeout=15)
+            r = _requests.get(url, params=params, headers=headers, timeout=timeout)
+            if parse == "text":
+                if encoding:
+                    r.encoding = encoding
+                return r.text
             return r.json()
         except Exception as exc:
             last = exc
             logger.warning("GET %s 失败(第%d次): %s", url, attempt + 1, exc)
-            time.sleep(3 * (attempt + 1) * (attempt + 1))  # 3s/12s/27s 退避
+            if attempt < retries - 1:
+                time.sleep(3 * (attempt + 1) * (attempt + 1))  # 3s/12s/27s 退避
     raise last  # type: ignore[misc]
 
 
@@ -241,10 +277,7 @@ def _eastmoney_datacenter(
         "source": "WEB",
         "client": "WEB",
     }
-    r = _requests.get(
-        _DATACENTER_URL, params=params, headers={"User-Agent": _UA}, timeout=15
-    )
-    d = r.json()
+    d = _http_get_json(_DATACENTER_URL, params=params, headers={"User-Agent": _UA})
     if d.get("result") and d["result"].get("data"):
         return d["result"]["data"]
     return []
@@ -265,9 +298,8 @@ def _ths_eps_forecast(code: str) -> pd.DataFrame:
         "User-Agent": _UA,
         "Referer": "https://basic.10jqka.com.cn/",
     }
-    r = _requests.get(url, headers=headers, timeout=15)
-    r.encoding = "gbk"
-    dfs = pd.read_html(r.text)
+    text = _http_get_json(url, headers=headers, parse="text", encoding="gbk")
+    dfs = pd.read_html(text)
     # Find the table containing EPS data
     for df in dfs:
         cols = [str(c) for c in df.columns]
@@ -298,9 +330,7 @@ def _sina_kline_fallback(code: str, start_date: str = None, end_date: str = None
         "ma": "no",
         "datalen": "800",
     }
-    r = _requests.get(url, params=params, timeout=15)
-    r.raise_for_status()
-    data = _json.loads(r.text)
+    data = _http_get_json(url, params=params, retries=2)
 
     if not data:
         return pd.DataFrame()
@@ -359,7 +389,13 @@ def _load_ohlcv_astock(symbol: str, curr_date: str) -> pd.DataFrame:
     # Fetch from mootdx — 800 daily bars (~3 years of trading days)
     try:
         client = _get_mootdx_client()
-        df = client.bars(symbol=code, category=4, offset=800)
+        try:
+            df = client.bars(symbol=code, category=4, offset=800)
+        except Exception:
+            # TCP 连接可能已被服务端断开：重建连接后重试一次
+            reset_mootdx_client()
+            client = _get_mootdx_client()
+            df = client.bars(symbol=code, category=4, offset=800)
 
         if df is None or df.empty:
             raise ValueError(f"No OHLCV data from mootdx for {code}")
@@ -416,7 +452,13 @@ def get_stock_data(
     data_source = "mootdx (TCP)"
     try:
         client = _get_mootdx_client()
-        df = client.bars(symbol=code, category=4, offset=800)
+        try:
+            df = client.bars(symbol=code, category=4, offset=800)
+        except Exception:
+            # TCP 断连重试：重建连接后重取一次
+            reset_mootdx_client()
+            client = _get_mootdx_client()
+            df = client.bars(symbol=code, category=4, offset=800)
 
         if df is None or df.empty:
             raise ValueError(f"No data from mootdx for {code}")
@@ -632,11 +674,10 @@ def get_fundamentals(
                 "fields": "f57,f58,f84,f85,f127,f116,f117,f189,f43",
                 "secid": f"{market_code}.{code}",
             }
-            r = _requests.get(
+            d = _http_get_json(
                 _info_url, params=_info_params,
-                headers={"User-Agent": _UA}, timeout=10,
-            )
-            d = r.json().get("data", {})
+                headers={"User-Agent": _UA}, timeout=10, retries=2,
+            ).get("data", {})
             if d:
                 if d.get("f127"):
                     lines.append(f"行业: {d['f127']}")
@@ -771,8 +812,7 @@ def _get_financial_report_sina(
         "page": "1",
         "num": "20",
     }
-    r = _requests.get(url, params=params, headers={"User-Agent": _UA}, timeout=15)
-    d = r.json()
+    d = _http_get_json(url, params=params, headers={"User-Agent": _UA})
 
     result = d.get("result", {}).get("data", {})
     items = result.get(source_type, [])
@@ -922,10 +962,8 @@ def _fetch_news_eastmoney(code: str, page_size: int = 20) -> list[dict]:
         ),
     }
 
-    resp = _requests.get(url, params=params, headers=headers, timeout=15)
-    resp.raise_for_status()
-    text = resp.text
-    text = text[text.index("(") + 1 : text.rindex(")")]
+    raw = _http_get_json(url, params=params, headers=headers, retries=2, parse="text")
+    text = raw[raw.index("(") + 1 : raw.rindex(")")]
     data = _json.loads(text)
 
     articles: list[dict] = []
@@ -955,10 +993,7 @@ def _fetch_news_sina(code: str, page_size: int = 20) -> list[dict]:
         "Referer": "https://finance.sina.com.cn/",
     }
 
-    resp = _requests.get(url, headers=headers, timeout=15)
-    resp.raise_for_status()
-    resp.encoding = "gb2312"
-    html = resp.text
+    html = _http_get_json(url, headers=headers, retries=2, parse="text", encoding="gb2312")
 
     articles: list[dict] = []
     rows = _re.findall(
@@ -1065,8 +1100,7 @@ def get_global_news(
         cls_url = "https://www.cls.cn/nodeapi/telegraphList"
         cls_params = {"rn": str(limit), "page": "1"}
         cls_headers = {"User-Agent": _UA, "Referer": "https://www.cls.cn/"}
-        r_cls = _requests.get(cls_url, params=cls_params, headers=cls_headers, timeout=10)
-        d_cls = r_cls.json()
+        d_cls = _http_get_json(cls_url, params=cls_params, headers=cls_headers, timeout=10, retries=2)
         for item in d_cls.get("data", {}).get("roll_data", []):
             title = item.get("title", "") or item.get("brief", "")
             content = item.get("content", "") or item.get("brief", "")
@@ -1099,8 +1133,7 @@ def get_global_news(
             "req_trace": str(uuid.uuid4()),
         }
         em_headers = {"User-Agent": _UA, "Referer": "https://kuaixun.eastmoney.com/"}
-        r_em = _requests.get(em_url, params=em_params, headers=em_headers, timeout=10)
-        d_em = r_em.json()
+        d_em = _http_get_json(em_url, params=em_params, headers=em_headers, timeout=10, retries=2)
         for item in d_em.get("data", {}).get("fastNewsList", []):
             title = item.get("title", "")
             summary = item.get("summary", "")[:200]
@@ -1296,8 +1329,6 @@ def get_hot_stocks(
     Returns stocks that hit limit-up with human-curated reason tags
     explaining WHY they surged (e.g. '算力租赁+AI政务').
     """
-    import requests
-
     if not curr_date or curr_date.strip() == "":
         curr_date = datetime.now().strftime("%Y-%m-%d")
 
@@ -1312,8 +1343,7 @@ def get_hot_stocks(
                 "Chrome/117.0.0.0 Safari/537.36"
             )
         }
-        r = requests.get(url, headers=headers, timeout=10)
-        data = r.json()
+        data = _http_get_json(url, headers=headers, timeout=10, retries=2)
 
         if data.get("errocode", 0) != 0:
             return f"同花顺 API error: {data.get('errormsg', 'unknown')}"
@@ -1459,8 +1489,7 @@ def get_northbound_flow(
 
     try:
         url_rt = "https://data.hexin.cn/market/hsgtApi/method/dayChart/"
-        r = requests.get(url_rt, headers=hsgt_headers, timeout=10)
-        d = r.json()
+        d = _http_get_json(url_rt, headers=hsgt_headers, timeout=10, retries=2)
 
         times = d.get("time", [])
         hgt = d.get("hgt", [])
@@ -1553,8 +1582,6 @@ def get_concept_blocks(
     Returns industry classification (申万), concept themes, and region.
     Each block includes current day's change percentage.
     """
-    import requests
-
     code = _normalize_ticker(ticker)
 
     try:
@@ -1563,8 +1590,7 @@ def get_concept_blocks(
             f'?stock=[{{"code":"{code}","market":"ab","type":"stock"}}]'
             "&finClientType=pc"
         )
-        r = requests.get(url, headers=_BAIDU_PAE_HEADERS, timeout=10)
-        d = r.json()
+        d = _http_get_json(url, headers=_BAIDU_PAE_HEADERS, timeout=10, retries=2)
 
         if str(d.get("ResultCode", -1)) != "0":
             return (
@@ -1974,8 +2000,7 @@ def get_industry_comparison(
             "fs": "m:90+t:2",
             "fields": "f2,f3,f4,f12,f13,f14,f104,f105,f128,f136,f140,f141,f207",
         }
-        r = _requests.get(url, params=params, headers={"User-Agent": _UA}, timeout=15)
-        d = r.json()
+        d = _http_get_json(url, params=params, headers={"User-Agent": _UA}, retries=2)
         items = d.get("data", {}).get("diff", [])
 
         if items:
@@ -2190,13 +2215,12 @@ def _fetch_daily_bars_eastmoney(code: str, start: pd.Timestamp) -> pd.DataFrame:
         "fields2": "f51,f52,f53,f54,f55,f56,f57",
         "ut": "fa5fd1943c7b386f172d6893dbfba10b",
     }
-    r = _requests.get(
+    d = _http_get_json(
         "https://push2his.eastmoney.com/api/qt/stock/kline/get",
         params=params,
         headers={"User-Agent": _UA},
-        timeout=15,
     )
-    klines = ((r.json().get("data") or {}).get("klines")) or []
+    klines = ((d.get("data") or {}).get("klines")) or []
     rows = []
     for line in klines:
         date, open_, close, high, low, volume, amount = line.split(",")
@@ -2229,8 +2253,8 @@ def _fetch_daily_bars_tencent(code: str, start: pd.Timestamp) -> pd.DataFrame:
     for _ in range(10):  # 保险上限：640 × 10 根
         params = {"param": f"{sym},day,{start.strftime('%Y-%m-%d')},{end},640,qfq"}
         try:
-            r = _requests.get(url, params=params, headers={"User-Agent": _UA}, timeout=15)
-            sym_data = (r.json().get("data") or {}).get(sym) or {}
+            d = _http_get_json(url, params=params, headers={"User-Agent": _UA}, retries=2)
+            sym_data = (d.get("data") or {}).get(sym) or {}
             # 无除权事件的股票腾讯只返回 day 键（= 未复权 = 前复权一致）
             days = sym_data.get("qfqday") or sym_data.get("day") or []
         except Exception as exc:
