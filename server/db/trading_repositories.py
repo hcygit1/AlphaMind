@@ -121,24 +121,32 @@ def update_decision(
     conn: sqlite3.Connection | None = None,
     **fields: Any,
 ) -> dict[str, Any]:
-    """更新决策字段。传入 conn 时在调用方事务内执行。"""
+    """更新决策字段。传入 conn 时在调用方事务内执行。
+
+    fields 里若带 expected_status，则追加 ``AND status = expected_status``
+    条件更新（CAS 语义）；rowcount=0 时不改行，返回当前行内容。
+    """
     allowed = {"status", "judge_json"}
+    expected_status = fields.pop("expected_status", None)
     updates = {key: value for key, value in fields.items() if key in allowed}
     if not updates:
         return get_decision(db_path, decision_id)
 
     assignments = ", ".join(f"{key} = ?" for key in updates)
     values = list(updates.values()) + [decision_id]
+    sql = f"UPDATE trade_decisions SET {assignments} WHERE id = ?"
+    if expected_status is not None:
+        sql += " AND status = ?"
+        values.append(expected_status)
 
     def _run(c: sqlite3.Connection) -> dict[str, Any]:
-        c.execute(
-            f"UPDATE trade_decisions SET {assignments} WHERE id = ?",
-            values,
-        )
+        changed = c.execute(sql, values).rowcount
         row = c.execute(
             "SELECT * FROM trade_decisions WHERE id = ?", (decision_id,)
         ).fetchone()
-        return _dict(row)
+        result = _dict(row)
+        result["_changed"] = bool(changed)
+        return result
 
     if conn is not None:
         return _run(conn)

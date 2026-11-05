@@ -44,6 +44,9 @@ export function DeepResearchPage() {
   const [loadingActiveTask, setLoadingActiveTask] = useState(true);
   const streamRef = useRef<EventSource | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
+  // 镜像最新 task 到 ref：SSE 重连等异步回调里读取，避免 setState updater 内调副作用
+  const taskRef = useRef<ResearchTask | null>(null);
+  taskRef.current = task;
   const isTaskActive = task?.status === "pending" || task?.status === "running";
   const isBusy = submitting || isTaskActive || cancelling;
   const primaryActionLabel = submitting ? "正在创建..." : isTaskActive ? "执行中..." : "启动深度投研";
@@ -226,12 +229,10 @@ export function DeepResearchPage() {
       }
       reconnectTimerRef.current = window.setTimeout(() => {
         reconnectTimerRef.current = null;
-        setTask((current) => {
-          if (current?.id === taskId && (current.status === "pending" || current.status === "running")) {
-            openProgressStream(taskId);
-          }
-          return current;
-        });
+        const current = taskRef.current;
+        if (current?.id === taskId && (current.status === "pending" || current.status === "running")) {
+          openProgressStream(taskId);
+        }
       }, 3000);
     };
   }

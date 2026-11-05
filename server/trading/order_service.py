@@ -136,7 +136,8 @@ class OrderService:
         """后台线程执行决策，API 立即返回。
 
         决策状态流转：draft → executing → executed/skipped/blocked/rejected/failed。
-        前端通过轮询决策列表看到终态。幂等：非 draft 状态直接返回当前状态。
+        用条件更新（CAS）抢占：只有 draft → executing 的胜者起后台线程，
+        并发重复点击的第二个请求 rowcount=0，直接返回当前状态，不会双重下单。
         """
         decision = get_decision(self.db_path, decision_id)
         if not decision:
@@ -144,9 +145,11 @@ class OrderService:
         if decision["status"] != "draft":
             return {"status": decision["status"], "async": False}
 
-        # 占位中间状态：并发重复点击时第二个请求会看到 executing 而直接返回
-        updated = update_decision(self.db_path, decision_id, status="executing")
-        if updated.get("status") != "executing":
+        updated = update_decision(
+            self.db_path, decision_id, status="executing", expected_status="draft"
+        )
+        if not updated.get("_changed"):
+            # 并发请求已抢占：返回其当前状态（executing 或已落终态）
             return {"status": updated["status"], "async": False}
 
         threading.Thread(

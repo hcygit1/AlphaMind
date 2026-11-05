@@ -107,6 +107,23 @@ def test_execute_decision_idempotent(client):
     assert len(test_client.get("/api/trading/orders").json()) == 1
 
 
+def test_execute_decision_concurrent_clicks_single_order(client):
+    """并发重复点击：CAS 抢占保证只有胜者起后台线程，只下一单。"""
+    test_client, db_path = client
+    decision = _make_decision(db_path)
+
+    responses = [
+        test_client.post(f"/api/trading/decisions/{decision['id']}/execute").json()
+        for _ in range(4)
+    ]
+    # 只允许一个请求真正抢占（async: True）
+    winners = [r for r in responses if r.get("async") is True]
+    assert len(winners) == 1
+
+    _wait_decision_terminal(test_client, decision["id"])
+    assert len(test_client.get("/api/trading/orders").json()) == 1
+
+
 def test_execute_decision_blocked_by_rule_judge(client):
     test_client, db_path = client
     # 止损高于入场价 → RuleJudge block
@@ -134,6 +151,17 @@ def test_refresh_empty_account(client):
     assert body["orders"] == {"filled": 0, "rejected": 0, "postponed": 0, "cancelled": 0}
     assert body["settlements"] == []
     assert body["equity"]["total_equity"] == 1_000_000
+
+
+def test_refresh_busy_when_locked(client):
+    """已有 refresh 在跑时第二个请求返回 busy，不重复撮合。"""
+    from server.trading.settlement import _refresh_lock
+
+    test_client, _ = client
+    with _refresh_lock:
+        body = test_client.post("/api/trading/refresh").json()
+    assert body["status"] == "busy"
+    assert "orders" not in body
 
 
 def test_refresh_settlements_equity_flow(client, monkeypatch):

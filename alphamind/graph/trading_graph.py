@@ -161,7 +161,12 @@ class AlphaMindGraph:
         return kwargs
 
     def _create_tool_nodes(self) -> Dict[str, ToolNode]:
-        """Create tool nodes for different data sources using abstract methods."""
+        """Create tool nodes for different data sources using abstract methods.
+
+        handle_tool_errors=True：工具抛异常时把错误作为 ToolMessage 返回给
+        analyst 让其自行调整，而不是炸掉整条 graph（与 wrap_analyst_node 兜底
+        互补：那层管 LLM 调用失败，这层管工具执行失败）。
+        """
         return {
             "market": ToolNode(
                 [
@@ -169,13 +174,15 @@ class AlphaMindGraph:
                     get_stock_data,
                     # Technical indicators
                     get_indicators,
-                ]
+                ],
+                handle_tool_errors=True,
             ),
             "social": ToolNode(
                 [
                     # News tools for social media analysis
                     get_news,
-                ]
+                ],
+                handle_tool_errors=True,
             ),
             "news": ToolNode(
                 [
@@ -183,7 +190,8 @@ class AlphaMindGraph:
                     get_news,
                     get_global_news,
                     get_insider_transactions,
-                ]
+                ],
+                handle_tool_errors=True,
             ),
             "fundamentals": ToolNode(
                 [
@@ -193,13 +201,15 @@ class AlphaMindGraph:
                     get_income_statement,
                     get_profit_forecast,
                     get_industry_comparison,
-                ]
+                ],
+                handle_tool_errors=True,
             ),
             "policy": ToolNode(
                 [
                     get_news,
                     get_global_news,
-                ]
+                ],
+                handle_tool_errors=True,
             ),
             "hot_money": ToolNode(
                 [
@@ -212,7 +222,8 @@ class AlphaMindGraph:
                     get_fund_flow,
                     get_dragon_tiger_board,
                     get_industry_comparison,
-                ]
+                ],
+                handle_tool_errors=True,
             ),
             "lockup": ToolNode(
                 [
@@ -220,7 +231,8 @@ class AlphaMindGraph:
                     get_news,
                     get_fundamentals,
                     get_lockup_expiry,
-                ]
+                ],
+                handle_tool_errors=True,
             ),
         }
 

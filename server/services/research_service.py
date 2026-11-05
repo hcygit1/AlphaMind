@@ -231,6 +231,7 @@ class ResearchService:
         }
         with self._lock:
             self._events[task_id].append(event)
-            # 已终态且事件超上限的任务，裁剪旧事件（保留最新 200 条供 SSE 补发）
-            if len(self._events[task_id]) > MAX_EVENTS_PER_TASK:
+            # 仅终态任务裁剪旧事件（保留最新 200 条供 SSE 补发）：
+            # 运行中任务的 SSE 客户端按事件序号补发，裁剪会使其错位
+            if status in TERMINAL_STATUSES and len(self._events[task_id]) > MAX_EVENTS_PER_TASK:
                 del self._events[task_id][:-200]
