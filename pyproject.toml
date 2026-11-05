@@ -40,6 +40,7 @@ dependencies = [
     "fpdf2>=2.8.0",
     "python-dotenv>=1.1.0",
     "mootdx>=0.10.0",
+    "baostock>=0.9.4",
 ]
 
 [project.urls]

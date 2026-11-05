@@ -22,6 +22,7 @@ import os
 import logging
 import math
 import re as _re
+import time
 import uuid
 import urllib.request
 
@@ -204,6 +205,20 @@ def _tencent_quote(codes: list[str]) -> dict[str, dict]:
 
 _DATACENTER_URL = "https://datacenter-web.eastmoney.com/api/data/v1/get"
 _UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+
+
+def _get_json(url: str, params: dict) -> dict:
+    """东财 push2 接口 GET + 失败重试（偶发断连/限流）。"""
+    last: Exception | None = None
+    for attempt in range(3):
+        try:
+            r = _requests.get(url, params=params, headers={"User-Agent": _UA}, timeout=15)
+            return r.json()
+        except Exception as exc:
+            last = exc
+            logger.warning("GET %s 失败(第%d次): %s", url, attempt + 1, exc)
+            time.sleep(3 * (attempt + 1) * (attempt + 1))  # 3s/12s/27s 退避
+    raise last  # type: ignore[misc]
 
 
 def _eastmoney_datacenter(
@@ -1992,3 +2007,280 @@ def get_industry_comparison(
         lines.append(f"行业对比查询失败: {e}")
 
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# 18. Market data foundation (数据底座): index constituents + full-history bars
+# ---------------------------------------------------------------------------
+
+# 东财 push2 板块代码：沪深300 成分
+_INDEX_BOARD_CODES = {
+    "000300": "BK0500",
+}
+
+# 东财 datacenter 报表成分类型：push2 被限流时的备用源
+_INDEX_DC_TYPES = {
+    "000300": "1",
+}
+
+
+def _constituents_via_datacenter(index_code: str) -> pd.DataFrame:
+    """成分股备用源：东财 datacenter 报表 RPT_INDEX_TS_COMPONENT。"""
+    idx_type = _INDEX_DC_TYPES.get(index_code)
+    if not idx_type:
+        raise ValueError(f"No datacenter fallback for index {index_code}")
+    params = {
+        "reportName": "RPT_INDEX_TS_COMPONENT",
+        "columns": "SECURITY_CODE,SECURITY_NAME_ABBR,INDUSTRY",
+        "filter": f'(TYPE="{idx_type}")',
+        "pageSize": "500",
+        "pageNumber": "1",
+        "source": "WEB",
+    }
+    r = _get_json(_DATACENTER_URL, params)
+    data = (r.get("result") or {}).get("data") or []
+    rows = [
+        {
+            "symbol": str(item.get("SECURITY_CODE", "")).strip(),
+            "name": str(item.get("SECURITY_NAME_ABBR", "")).strip(),
+            "industry": str(item.get("INDUSTRY", "")).strip() or None,
+        }
+        for item in data
+    ]
+    rows = list({r["symbol"]: r for r in rows}.values())
+    if not rows:
+        raise ValueError(f"No constituents data for index {index_code}")
+    return pd.DataFrame(rows)
+
+
+def get_index_constituents(
+    index_code: str = "000300",
+) -> pd.DataFrame:
+    """Fetch index constituent list (东财 direct HTTP).
+
+    主源 push2 clist（每页最多 100 条，按 pn 翻页），失败时（限流/断连）
+    自动切换 datacenter-web 报表备用源。
+    Returns DataFrame with columns: symbol, name, industry.
+    """
+    board = _INDEX_BOARD_CODES.get(index_code)
+    if not board:
+        raise ValueError(f"Unsupported index code: {index_code}")
+
+    url = "https://push2.eastmoney.com/api/qt/clist/get"
+    items: list[dict] = []
+    page = 1
+    total: int | None = None
+    try:
+        while True:
+            params = {
+                "pn": str(page),
+                "pz": "100",
+                "po": "1",
+                "np": "1",
+                "fltt": "2",
+                "invt": "2",
+                "fid": "f12",
+                "fs": f"b:{board}",
+                "fields": "f12,f14,f100",
+            }
+            r = _get_json(url, params)
+            data = r.get("data") or {}
+            batch = data.get("diff") or []
+            if not batch:
+                break
+            items.extend(batch)
+            total = int(data.get("total") or 0)
+            if len(items) >= total or len(batch) < 100:
+                break
+            page += 1
+    except Exception as exc:
+        logger.warning("push2 clist 获取成分股失败，切换 datacenter 备用源: %s", exc)
+        return _constituents_via_datacenter(index_code)
+
+    if not items:
+        # push2 返回空数据（如临时降级），尝试备用源
+        return _constituents_via_datacenter(index_code)
+
+    rows = [
+        {
+            "symbol": str(item.get("f12", "")).strip(),
+            "name": str(item.get("f14", "")).strip(),
+            "industry": str(item.get("f100", "")).strip() or None,
+        }
+        for item in items
+    ]
+    # 按页去重（成分调整瞬间可能重复）
+    rows = list({r["symbol"]: r for r in rows}.values())
+    return pd.DataFrame(rows)
+
+
+_BS_SESSION_READY = False
+
+
+def _ensure_bs_login() -> None:
+    """baostock 全局会话复用：批量同步时避免每只股票重复登录（约 1s 开销/次）。"""
+    global _BS_SESSION_READY
+    if not _BS_SESSION_READY:
+        import baostock as bs
+
+        lg = bs.login()
+        if lg.error_code != "0":
+            raise ValueError(f"baostock login failed: {lg.error_msg}")
+        _BS_SESSION_READY = True
+
+
+def _fetch_daily_bars_baostock(code: str, start: pd.Timestamp) -> pd.DataFrame:
+    """baostock 主源：官方 TCP 接口（非网页爬虫，无 WAF 封禁），前复权日线，含成交额。
+
+    会话过期时重登一次再查；停牌日不返回行。
+    """
+    import baostock as bs
+
+    global _BS_SESSION_READY
+    prefix = "sh" if code[0] in ("6", "9") else "sz"
+    bs_code = f"{prefix}.{code}"
+    end_date = pd.Timestamp.today().strftime("%Y-%m-%d")
+
+    rs = None
+    for attempt in range(2):
+        _ensure_bs_login()
+        rs = bs.query_history_k_data_plus(
+            bs_code,
+            "date,open,high,low,close,volume,amount",
+            start_date=start.strftime("%Y-%m-%d"),
+            end_date=end_date,
+            frequency="d",
+            adjustflag="2",  # 前复权
+        )
+        if rs.error_code == "0":
+            break
+        if attempt == 0:
+            _BS_SESSION_READY = False  # 会话可能过期，重登一次
+            continue
+        raise ValueError(f"baostock query failed for {code}: {rs.error_msg}")
+
+    data: list[list[str]] = []
+    assert rs is not None
+    while rs.next():
+        data.append(rs.get_row_data())
+    if not data:
+        raise ValueError(f"No OHLCV data from baostock for {code}")
+    df = pd.DataFrame(data, columns=["Date", "Open", "High", "Low", "Close", "Volume", "Amount"])
+    df["Date"] = pd.to_datetime(df["Date"])
+    for col in ["Open", "High", "Low", "Close", "Volume", "Amount"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    # 停牌日 baostock 返回行但 volume/amount 为空串；剔除（volume 列有 NOT NULL 约束）
+    df = df.dropna(subset=["Close", "Volume"]).reset_index(drop=True)
+    return df
+
+
+def _fetch_daily_bars_eastmoney(code: str, start: pd.Timestamp) -> pd.DataFrame:
+    """东财 kline：一次请求覆盖 [start, now]，含成交额。
+
+    单次请求不重试——失败即由调用方切换腾讯备用源，跨源兜底优于同源重试。
+    """
+    market = "1" if code[0] in ("6", "9") else "0"
+    params = {
+        "secid": f"{market}.{code}",
+        "klt": "101",  # 日线
+        "fqt": "1",  # 前复权
+        "beg": start.strftime("%Y%m%d"),
+        "end": "20500101",
+        "fields1": "f1,f2,f3,f4,f5,f6",
+        "fields2": "f51,f52,f53,f54,f55,f56,f57",
+        "ut": "fa5fd1943c7b386f172d6893dbfba10b",
+    }
+    r = _requests.get(
+        "https://push2his.eastmoney.com/api/qt/stock/kline/get",
+        params=params,
+        headers={"User-Agent": _UA},
+        timeout=15,
+    )
+    klines = ((r.json().get("data") or {}).get("klines")) or []
+    rows = []
+    for line in klines:
+        date, open_, close, high, low, volume, amount = line.split(",")
+        rows.append(
+            {
+                "Date": pd.Timestamp(date),
+                "Open": float(open_),
+                "High": float(high),
+                "Low": float(low),
+                "Close": float(close),
+                "Volume": float(volume),
+                "Amount": float(amount),
+            }
+        )
+    if not rows:
+        raise ValueError(f"No OHLCV data from eastmoney for {code}")
+    return pd.DataFrame(rows)
+
+
+def _fetch_daily_bars_tencent(code: str, start: pd.Timestamp) -> pd.DataFrame:
+    """腾讯 fqkline 备用源：每次最多 640 根，按 end 日期向前翻页。
+
+    行格式 [date, open, close, high, low, volume]，无成交额（Amount=None）。
+    """
+    mkt = "sh" if code[0] in ("6", "9") else "sz"
+    sym = f"{mkt}{code}"
+    url = "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
+    rows: dict[str, list] = {}
+    end = pd.Timestamp.today().strftime("%Y-%m-%d")
+    for _ in range(10):  # 保险上限：640 × 10 根
+        params = {"param": f"{sym},day,{start.strftime('%Y-%m-%d')},{end},640,qfq"}
+        try:
+            r = _requests.get(url, params=params, headers={"User-Agent": _UA}, timeout=15)
+            sym_data = (r.json().get("data") or {}).get(sym) or {}
+            # 无除权事件的股票腾讯只返回 day 键（= 未复权 = 前复权一致）
+            days = sym_data.get("qfqday") or sym_data.get("day") or []
+        except Exception as exc:
+            # 限流空响应：宁可整只失败让上层重试，也不落库截断数据
+            raise ValueError(f"Tencent kline interrupted for {code}: {exc}") from exc
+        if not days:
+            break
+        for d in days:
+            rows[d[0]] = d
+        earliest = pd.Timestamp(days[0][0])
+        if earliest <= start:
+            break
+        end = (earliest - pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+        time.sleep(0.2)  # 翻页节流：连续请求会触发腾讯限流
+    if not rows:
+        raise ValueError(f"No OHLCV data from tencent for {code}")
+    out = [
+        {
+            "Date": pd.Timestamp(k),
+            "Open": float(v[1]),
+            "High": float(v[3]),
+            "Low": float(v[4]),
+            "Close": float(v[2]),
+            "Volume": float(v[5]),
+            "Amount": None,
+        }
+        for k, v in sorted(rows.items())
+    ]
+    return pd.DataFrame(out)
+
+
+def fetch_daily_bars(
+    symbol: str,
+    start_date: str | None = None,
+) -> pd.DataFrame:
+    """Fetch daily bars (前复权): baostock 主源（官方 TCP 接口），东财/腾讯网页源备用。
+
+    前复权价格在除权除息后会整体变化，调用方应全量替换而非增量追加。
+
+    Returns DataFrame[Date,Open,High,Low,Close,Volume,Amount] sorted by
+    Date ascending. Raises ValueError if no data.
+    """
+    code = _normalize_ticker(symbol)
+    start = pd.to_datetime(start_date) if start_date else pd.Timestamp("2018-01-01")
+    try:
+        return _fetch_daily_bars_baostock(code, start)
+    except Exception as exc:
+        logger.warning("baostock 获取 %s 失败，切换东财备用源: %s", code, exc)
+        try:
+            return _fetch_daily_bars_eastmoney(code, start)
+        except Exception as exc2:
+            logger.warning("东财 kline 获取 %s 失败，切换腾讯备用源: %s", code, exc2)
+            return _fetch_daily_bars_tencent(code, start)

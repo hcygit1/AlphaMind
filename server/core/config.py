@@ -24,7 +24,12 @@ def get_settings() -> ServerSettings:
             str(Path.home() / ".alphamind" / "alphamind.sqlite3"),
         )
     )
-    origins = os.getenv("ALPHAMIND_CORS_ORIGINS", "http://localhost:5173")
+    # Vite dev server: Chrome/Chromium treats localhost and 127.0.0.1 as
+    # distinct origins, so both must be allowed by default.
+    origins = os.getenv(
+        "ALPHAMIND_CORS_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173",
+    )
     return ServerSettings(
         database_path=db_path,
         cors_origins=tuple(origin.strip() for origin in origins.split(",") if origin.strip()),
