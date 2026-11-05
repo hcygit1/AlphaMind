@@ -235,33 +235,35 @@ alphamind --help     # 查看所有选项
 
 ## Web UI
 
-内置 Streamlit 可视化界面，支持在侧边栏选择 LLM 供应商和模型，输入股票代码即可一键分析，适合不写代码的用户。
+内置 Vite + React 投研工作台（Investment Workbench），覆盖从研究到模拟交易的完整闭环，同样保留 Streamlit 旧入口（`alphamind-web`）作为兼容。
 
 ### 启动
 
 ```bash
-# 方式一：命令行启动（推荐）
-alphamind-web
+# 方式一：启动 React 工作台（需先启动后端 API）
+uvicorn server.main:app --host 127.0.0.1 --port 8000
+cd frontend && npm install && npm run dev
+# 打开浏览器访问 http://localhost:5173
 
-# 方式二：直接运行
-streamlit run web/app.py
+# 方式二：Streamlit 旧界面（兼容入口）
+alphamind-web
 ```
 
-打开浏览器访问 `http://localhost:8501`。
+### 功能模块
 
-### 功能
-
-- **模型自选**：侧边栏支持 9 个 LLM 供应商切换（MiniMax/DeepSeek/Qwen/GLM/OpenAI/Anthropic/Google/xAI/Ollama）
-- **一键分析**：输入 6 位 A 股代码 + 日期，点击「开始分析」
-- **实时进度**：12 阶段 pipeline 实时显示（7 分析师 → 质量门控 → 辩论 → 风控 → 决策），所有已完成阶段的报告均可展开查看
-- **完整报告**：信号卡片（Buy/Hold/Sell）、7 份分析师报告、多空辩论、风控评估
-- **PDF 导出**：一键下载完整 PDF 分析报告
-- **历史记录**：自动保存并展示所有历史分析
+- **Deep Research**：输入股票代码 + 日期一键发起深度投研，SSE 实时进度，支持自动化投研（自选股每日定时分析）
+- **Reports**：投研报告列表与详情，信号卡片（Buy/Hold/Sell）、7 份分析师报告、多空辩论、风控评估
+- **Factor Lab**：因子评价，多因子 IC/分层回测指标一目了然
+- **Strategy Lab**：规则策略回测（含 A 股涨跌停买入约束）
+- **Paper Trading**：投研决策一键转模拟订单，T+1 撮合、佣金印花税仿真
+- **Orders & Positions**：委托、持仓、净值曲线与止损告警
+- **Review & Analytics**：结算复盘，相对沪深 300 的超额收益归因
+- **Agent 助手**：对话式查询报告与页面上下文
 
 ### 截图
 
 <p align="center">
-  <img src="assets/web-ui-welcome.png" width="80%" alt="Web UI 欢迎页"/>
+  <img src="assets/web-ui-welcome.png" width="80%" alt="AlphaMind 投研工作台 - Deep Research"/>
 </p>
 
 ---
