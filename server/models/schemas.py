@@ -12,6 +12,11 @@ class ResearchTaskCreate(BaseModel):
     trade_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
 
 
+class AutomationSettingsUpdate(BaseModel):
+    enabled: bool | None = None
+    run_time: str | None = Field(default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+
+
 class PageContextUpdate(BaseModel):
     session_id: str
     page: str

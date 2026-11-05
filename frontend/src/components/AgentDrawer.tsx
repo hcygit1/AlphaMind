@@ -7,9 +7,26 @@ import {
   requestCurrentPageContextSync,
   sendAgentMessage
 } from "../api/client";
-import type { AgentToolCard } from "../api/types";
+import type { AgentSession, AgentToolCard } from "../api/types";
+
+// 会话创建的并发去重：StrictMode 双挂载时只发一次创建请求
+let agentSessionPromise: Promise<AgentSession> | null = null;
+
+function ensureAgentSession() {
+  if (!agentSessionPromise) {
+    agentSessionPromise = createAgentSession();
+    agentSessionPromise.catch(() => {
+      agentSessionPromise = null;
+    });
+  }
+  return agentSessionPromise;
+}
+
+// 本地消息自增 id：让列表 key 不依赖数组下标
+let messageSeq = 0;
 
 type AgentMessage = {
+  id: number;
   role: "user" | "assistant";
   content: string;
   toolCards?: AgentToolCard[];
@@ -20,6 +37,7 @@ export function AgentDrawer() {
   const [sessionId, setSessionId] = useState("");
   const [messages, setMessages] = useState<AgentMessage[]>([
     {
+      id: messageSeq++,
       role: "assistant",
       content: "我可以帮你总结当前报告，或启动深度投研任务。"
     }
@@ -51,7 +69,7 @@ export function AgentDrawer() {
     }
 
     let mounted = true;
-    createAgentSession()
+    ensureAgentSession()
       .then((session) => {
         if (!mounted) {
           return;
@@ -77,7 +95,7 @@ export function AgentDrawer() {
       return;
     }
 
-    setMessages((current) => [...current, { role: "user", content }]);
+    setMessages((current) => [...current, { id: messageSeq++, role: "user", content }]);
     setInput("");
     setError("");
     setBusy(true);
@@ -114,6 +132,7 @@ export function AgentDrawer() {
     setMessages((current) => [
       ...current,
       {
+        id: messageSeq++,
         role: "assistant",
         content,
         toolCards
@@ -150,10 +169,10 @@ export function AgentDrawer() {
             <span>Context</span>
             <strong>当前页面 / 默认工作区</strong>
           </div>
-          <div className="agent-messages">
+          <div className="agent-messages" aria-live="polite">
             {messages.map((message, index) => (
               <div
-                key={`${message.role}-${index}`}
+                key={message.id}
                 className={message.role === "assistant" ? "assistant-message" : "user-message"}
               >
                 <p>{message.content}</p>

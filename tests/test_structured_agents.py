@@ -7,7 +7,7 @@ behavior we added for the Trader and Research Manager so all three
 decision-making agents share the same shape.
 """
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -21,7 +21,7 @@ from alphamind.agents.schemas import (
     render_trader_proposal,
 )
 from alphamind.agents.trader.trader import create_trader
-from alphamind.agents.utils.structured import bind_structured
+from alphamind.agents.utils.structured import _JsonModeStructuredRunnable, bind_structured
 
 
 # ---------------------------------------------------------------------------
@@ -247,3 +247,25 @@ class TestStructuredBinding:
         llm.with_structured_output.assert_called_once_with(ResearchPlan, method="json_mode")
         bound.invoke("hello")
         assert "Return only a valid JSON object" in structured.invoke.call_args.args[0]
+
+    def test_real_deepseek_llm_instance_routes_to_json_mode(self):
+        """Regression: real DeepSeek LLM instances carry no ``provider``
+        attribute (it lives on the client wrapper, not the LLM), so
+        detection must match the concrete class or DeepSeek silently takes
+        the function-calling path and 400s on thinking models."""
+        from alphamind.llm_clients.openai_client import DeepSeekChatOpenAI
+
+        llm = DeepSeekChatOpenAI(
+            model="deepseek-v4-pro",
+            api_key="sk-test",
+            base_url="https://api.deepseek.com",
+        )
+        assert not hasattr(llm, "provider")
+
+        with patch.object(
+            DeepSeekChatOpenAI, "with_structured_output", return_value=MagicMock()
+        ) as wso:
+            bound = bind_structured(llm, ResearchPlan, "Research Manager")
+
+        wso.assert_called_once_with(ResearchPlan, method="json_mode")
+        assert isinstance(bound, _JsonModeStructuredRunnable)

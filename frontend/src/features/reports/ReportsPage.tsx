@@ -1,5 +1,5 @@
 import { FileSearch, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getReport, listReports } from "../../api/client";
 import type { ReportDetailResponse, ReportSummary } from "../../api/types";
 import { ReportDetail } from "./ReportDetail";
@@ -11,6 +11,7 @@ export function ReportsPage() {
   const [loadingList, setLoadingList] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [error, setError] = useState("");
+  const openRequestRef = useRef(0);
 
   useEffect(() => {
     let mounted = true;
@@ -42,16 +43,25 @@ export function ReportsPage() {
   }, []);
 
   async function openReport(report: ReportSummary) {
+    const requestId = ++openRequestRef.current;
     setSelectedReportId(report.id);
     setLoadingDetail(true);
     setError("");
     try {
       const loaded = await getReport(report.id);
+      if (requestId !== openRequestRef.current) {
+        return;
+      }
       setDetail(loaded);
     } catch (exc) {
+      if (requestId !== openRequestRef.current) {
+        return;
+      }
       setError(exc instanceof Error ? exc.message : String(exc));
     } finally {
-      setLoadingDetail(false);
+      if (requestId === openRequestRef.current) {
+        setLoadingDetail(false);
+      }
     }
   }
 
@@ -102,7 +112,7 @@ export function ReportsPage() {
             <span>正在打开报告...</span>
           </div>
         )}
-        {!loadingDetail && detail && <ReportDetail detail={detail} />}
+        {!loadingDetail && detail && <ReportDetail key={detail.report.id} detail={detail} />}
         {!loadingDetail && !detail && !loadingList && reports.length > 0 && (
           <div className="panel report-loading">
             <FileSearch size={22} aria-hidden="true" />

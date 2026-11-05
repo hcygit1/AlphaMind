@@ -24,6 +24,8 @@ from typing import Any, Callable, Optional, TypeVar
 
 from pydantic import BaseModel
 
+from alphamind.llm_clients.openai_client import DeepSeekChatOpenAI
+
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
@@ -73,7 +75,14 @@ def bind_structured(llm: Any, schema: type[T], agent_name: str) -> Optional[Any]
     will use free-text generation for every call instead of one-shot fallback.
     """
     try:
-        if getattr(llm, "provider", "").lower() == "deepseek":
+        # The provider marker lives on the client wrapper, not on the LLM
+        # instance it returns, so also match on the concrete class —
+        # otherwise DeepSeek LLMs silently take the function-calling path
+        # and 400 on thinking models (no tool_choice support).
+        if (
+            isinstance(llm, DeepSeekChatOpenAI)
+            or getattr(llm, "provider", "").lower() == "deepseek"
+        ):
             return _JsonModeStructuredRunnable(
                 llm.with_structured_output(schema, method="json_mode"),
                 schema,

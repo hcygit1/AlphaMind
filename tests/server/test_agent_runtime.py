@@ -50,6 +50,19 @@ def test_intent_router_detects_deep_research():
     assert intent.arguments == {"message": "帮我做一次深度投研"}
 
 
+def test_intent_router_detects_trading_query():
+    router = IntentRouter()
+    assert router.route("查一下我的持仓").name == "trading_query"
+    assert router.route("当前仓位怎么样").name == "trading_query"
+    assert router.route("看看最近的订单").name == "trading_query"
+
+
+def test_intent_router_detects_execute_decision():
+    router = IntentRouter()
+    assert router.route("执行决策").name == "execute_decision"
+    assert router.route("帮我下单").name == "execute_decision"
+
+
 def test_agent_runtime_dispatches_report_summary_tool():
     registry = ToolRegistry()
     registry.register(FakeTool())

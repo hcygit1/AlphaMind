@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 from collections import defaultdict
 from pathlib import Path
@@ -15,7 +16,11 @@ from server.db.repositories import (
     update_research_task,
     upsert_report,
 )
+from server.db.trading_repositories import create_decision
 from server.services.report_service import extract_summary
+from server.trading.extraction import load_state, parse_decision_from_state
+
+logger = logging.getLogger(__name__)
 
 
 ResearchRunner = Callable[[str, str, Callable[..., None]], dict[str, Any]]
@@ -24,9 +29,11 @@ TERMINAL_STATUSES = {"completed", "failed", "cancelled"}
 
 def default_runner(ticker: str, trade_date: str, emit: Callable[..., None]) -> dict[str, Any]:
     from alphamind.graph.trading_graph import AlphaMindGraph
+    from server.services.token_usage import TokenUsageCallback
 
     config = build_research_config()
-    graph = AlphaMindGraph(debug=False, config=config)
+    tracker = TokenUsageCallback()
+    graph = AlphaMindGraph(debug=False, config=config, callbacks=[tracker])
     final_state, signal = graph.propagate(ticker, trade_date)
     state_path = (
         Path(config["results_dir"])
@@ -39,6 +46,7 @@ def default_runner(ticker: str, trade_date: str, emit: Callable[..., None]) -> d
         "state_path": str(state_path),
         "signal": signal,
         "summary": extract_summary(final_state),
+        "token_usage": tracker.snapshot(),
     }
 
 
@@ -128,12 +136,17 @@ class ResearchService:
                 summary=str(result["summary"]),
                 state_path=str(result["state_path"]),
             )
+            usage = result.get("token_usage") or {}
             update_research_task(
                 self.db_path,
                 task_id,
                 status="completed",
                 report_id=report["id"],
+                prompt_tokens=int(usage.get("prompt_tokens") or 0),
+                completion_tokens=int(usage.get("completion_tokens") or 0),
+                total_tokens=int(usage.get("total_tokens") or 0),
             )
+            self._persist_decision(report["id"], task["ticker"], task["trade_date"], result)
             self._emit(
                 task_id,
                 status="completed",
@@ -164,6 +177,28 @@ class ResearchService:
                 stage=current.get("progress_stage"),
                 message=str(exc),
             )
+
+    def _persist_decision(
+        self,
+        report_id: str,
+        ticker: str,
+        trade_date: str,
+        result: dict[str, Any],
+    ) -> None:
+        """从 state JSON 提取决策并入库；失败只记日志，不影响报告流程。"""
+        try:
+            state = load_state(str(result["state_path"]))
+            record = parse_decision_from_state(state, fallback_rating=str(result["signal"]))
+            decision = create_decision(
+                self.db_path,
+                report_id=report_id,
+                ticker=ticker,
+                trade_date=trade_date,
+                record=record,
+            )
+            logger.info("决策已入库: %s (%s %s)", decision["id"], ticker, decision["rating"])
+        except Exception as exc:
+            logger.warning("决策入库失败（不影响报告完成）: %s", exc)
 
     def get_task(self, task_id: str) -> dict[str, Any]:
         return get_research_task(self.db_path, task_id)

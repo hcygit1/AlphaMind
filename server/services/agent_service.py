@@ -9,6 +9,7 @@ from alphamind.agent_runtime.runtime import AgentRuntime
 from alphamind.agent_runtime.tools.deep_research import DeepResearchTool
 from alphamind.agent_runtime.tools.registry import ToolRegistry
 from alphamind.agent_runtime.tools.report_summary import ReportSummaryTool
+from alphamind.agent_runtime.tools.trading import ExecuteDecisionTool, TradingQueryTool
 from server.db.repositories import (
     add_agent_message,
     create_agent_session,
@@ -71,6 +72,8 @@ class AgentService:
         registry = ToolRegistry()
         registry.register(ReportSummaryTool(self.db_path))
         registry.register(DeepResearchTool(self.research_service))
+        registry.register(TradingQueryTool(self.db_path))
+        registry.register(ExecuteDecisionTool(self.db_path))
         return registry
 
     def _runtime_page_context(self, page_context: dict) -> dict:

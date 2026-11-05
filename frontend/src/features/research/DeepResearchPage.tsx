@@ -8,13 +8,22 @@ import {
   createResearchTask,
   currentAgentSessionId,
   getActiveResearchTask,
+  getResearchTask,
   researchEventsUrl,
   savePageContext,
   type AgentContextSyncDetail
 } from "../../api/client";
 import type { ResearchProgressEvent, ResearchTask } from "../../api/types";
+import { AutomationPanel } from "./AutomationPanel";
 
-const defaultTradeDate = new Date().toISOString().slice(0, 10);
+function todayLocalISO() {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
+const defaultTradeDate = todayLocalISO();
 
 const statusLabels: Record<ResearchTask["status"], string> = {
   pending: "等待中",
@@ -104,10 +113,12 @@ export function DeepResearchPage() {
       detail.tasks.push(saveCurrentPageContext(detail.sessionId));
     }
 
-    syncPageContext();
+    // 逐字输入时防抖，避免每敲一个字符就 PUT 一次页面上下文
+    const timer = window.setTimeout(syncPageContext, 600);
     window.addEventListener(AGENT_SESSION_READY_EVENT, syncPageContext);
     window.addEventListener(AGENT_CONTEXT_SYNC_EVENT, handleContextSync);
     return () => {
+      window.clearTimeout(timer);
       window.removeEventListener(AGENT_SESSION_READY_EVENT, syncPageContext);
       window.removeEventListener(AGENT_CONTEXT_SYNC_EVENT, handleContextSync);
     };
@@ -162,7 +173,13 @@ export function DeepResearchPage() {
     streamRef.current = stream;
 
     stream.addEventListener("research_progress", (message) => {
-      const payload = JSON.parse((message as MessageEvent<string>).data) as ResearchProgressEvent;
+      let payload: ResearchProgressEvent;
+      try {
+        payload = JSON.parse((message as MessageEvent<string>).data) as ResearchProgressEvent;
+      } catch {
+        // 心跳或脏数据：跳过本条，避免中断后续事件处理
+        return;
+      }
       setEvents((current) => [...current, payload.message]);
       setTask((current) =>
         current
@@ -182,6 +199,14 @@ export function DeepResearchPage() {
       if (payload.status === "completed" || payload.status === "failed" || payload.status === "cancelled") {
         stream.close();
         streamRef.current = null;
+        // 终态后重新拉取任务，补齐 token 用量等字段；若用户已切换到新任务则丢弃旧响应
+        if (payload.status === "completed") {
+          void getResearchTask(taskId)
+            .then((finalTask) =>
+              setTask((current) => (current?.id === finalTask.id ? finalTask : current))
+            )
+            .catch(() => undefined);
+        }
       }
     });
 
@@ -297,6 +322,15 @@ export function DeepResearchPage() {
                   <dd>{task.report_id}</dd>
                 </div>
               )}
+              {task.total_tokens != null && task.total_tokens > 0 && (
+                <div>
+                  <dt>Token 用量</dt>
+                  <dd>
+                    共 {task.total_tokens.toLocaleString("zh-CN")}（输入 {task.prompt_tokens?.toLocaleString("zh-CN") ?? 0} / 输出{" "}
+                    {task.completion_tokens?.toLocaleString("zh-CN") ?? 0}）
+                  </dd>
+                </div>
+              )}
             </dl>
             <div className="research-steps" aria-label="任务阶段">
               {buildTaskSteps(task).map((step) => (
@@ -347,6 +381,7 @@ export function DeepResearchPage() {
           )}
         </ol>
       </div>
+      <AutomationPanel />
     </section>
   );
 }

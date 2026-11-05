@@ -61,6 +61,29 @@ class TestParseRating:
         for r in RATINGS_5_TIER:
             assert parse_rating(f"Rating: {r}") == r
 
+    def test_chinese_label_with_chinese_alias(self):
+        # 真实链路形状：DeepSeek 中文输出「**最终评级：减持（Underweight）**」
+        assert parse_rating("**最终评级：减持（Underweight）**") == "Underweight"
+
+    def test_chinese_label_plain(self):
+        assert parse_rating("评级：买入\n\n执行摘要：分批建仓。") == "Buy"
+
+    def test_chinese_alias_variants(self):
+        assert parse_rating("评级：增持") == "Overweight"
+        assert parse_rating("评级：超配") == "Overweight"
+        assert parse_rating("评级：中性") == "Hold"
+        assert parse_rating("评级：低配") == "Underweight"
+        assert parse_rating("评级：卖出") == "Sell"
+        assert parse_rating("评级：清仓") == "Sell"
+
+    def test_english_word_wrapped_in_chinese_parens(self):
+        # 第二趟兜底：括号剥离后应识别英文 5-tier 词
+        assert parse_rating("结论（Sell）明确，执行离场。") == "Sell"
+
+    def test_chinese_unrelated_label_does_not_match(self):
+        # 「评级」后接非评级词时应继续找，不误报
+        assert parse_rating("评级调整触发：观察名单") == "Hold"
+
 
 # ---------------------------------------------------------------------------
 # SignalProcessor: thin adapter over the heuristic
