@@ -252,7 +252,29 @@ class OrderService:
         else:
             outcome = self._build_sell_order(decision, account, positions, exec_date)
         if outcome.get("status") == "rejected":
-            update_decision(self.db_path, decision_id, status="rejected")
+            # 拒绝也落订单留痕（quantity=0），订单历史与成交率才有真实分母；
+            # 原因写入订单 reject_reason 与决策 judge_json，前端可展示。
+            reason = str(outcome.get("reason") or "订单被拒绝")
+            with session(self.db_path) as conn:
+                create_order(
+                    self.db_path,
+                    decision_id=decision_id,
+                    account_id=account["id"],
+                    ticker=decision["ticker"],
+                    side=direction,
+                    quantity=0,
+                    exec_date=exec_date,
+                    conn=conn,
+                    status="rejected",
+                    reject_reason=reason,
+                )
+                update_decision(
+                    self.db_path,
+                    decision_id,
+                    conn=conn,
+                    status="rejected",
+                    judge_json=json.dumps({"reject_reason": reason}, ensure_ascii=False),
+                )
             return outcome
 
         # 单事务保证原子性：订单落库与决策状态变更同时生效

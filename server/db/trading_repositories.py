@@ -163,18 +163,23 @@ def create_order(
     quantity: int,
     exec_date: str,
     conn: sqlite3.Connection | None = None,
+    status: str = "pending",
+    reject_reason: str | None = None,
 ) -> dict[str, Any]:
-    """创建 pending 订单。传入 conn 时在调用方事务内执行（下单+决策状态原子性）。"""
+    """创建订单（默认 pending；护栏拒绝时以 status="rejected" 留痕）。
+
+    传入 conn 时在调用方事务内执行（下单+决策状态原子性）。
+    """
     order_id = _uuid("ord")
 
     def _run(c: sqlite3.Connection) -> dict[str, Any]:
         c.execute(
             """
             INSERT INTO trade_orders
-            (id, decision_id, account_id, ticker, side, quantity, status, exec_date)
-            VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
+            (id, decision_id, account_id, ticker, side, quantity, status, exec_date, reject_reason)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (order_id, decision_id, account_id, ticker, side, quantity, exec_date),
+            (order_id, decision_id, account_id, ticker, side, quantity, status, exec_date, reject_reason),
         )
         row = c.execute(
             "SELECT * FROM trade_orders WHERE id = ?", (order_id,)
