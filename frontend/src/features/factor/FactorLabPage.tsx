@@ -5,10 +5,26 @@ import type { FactorEvalRecord, FactorEvalResponse, FactorMeta } from "../../api
 import { LineChart } from "../../components/LineChart";
 import { pct, returnClass } from "../../lib/format";
 
+/** 历史记录「参数」列：{"window": 20} → window=20，解析失败时原样返回。 */
+function formatParams(raw: string): string {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      const entries = Object.entries(parsed as Record<string, unknown>);
+      if (entries.length > 0) {
+        return entries.map(([key, value]) => `${key}=${String(value)}`).join(", ");
+      }
+    }
+  } catch {
+    // 非 JSON 字符串原样展示
+  }
+  return raw;
+}
+
 // Q1（因子值最低）→ Q5（最高）浅到深
 const Q_COLORS = ["#a8b6c8", "#7d9cc4", "#4f7fc0", "#2c5da3", "#0d3a6b"];
-const LS_COLOR = "#10b7c7";
-const IC_COLOR = "#2c5da3";
+const LS_COLOR = "#147d6f";
+const IC_COLOR = "#0d3a6b";
 
 export function FactorLabPage() {
   const [factors, setFactors] = useState<FactorMeta[]>([]);
@@ -88,7 +104,7 @@ export function FactorLabPage() {
           <h2>
             <FlaskConical size={18} aria-hidden="true" /> 因子评价
           </h2>
-          <p>价量因子 → 月度 IC / 分层 / 多空检验（数据即算即评，结论自动留档）</p>
+          <p>价量因子 → 月度 IC / 分层 / 多空检验</p>
         </div>
         <div className="lab-form">
           <label>
@@ -243,7 +259,7 @@ export function FactorLabPage() {
                 {evals.map((e) => (
                   <tr key={e.id}>
                     <td>{e.factor_key}</td>
-                    <td className="mono">{e.params}</td>
+                    <td className="mono">{formatParams(e.params)}</td>
                     <td className="mono">
                       {e.start_date} ~ {e.end_date}
                     </td>

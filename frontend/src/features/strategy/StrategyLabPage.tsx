@@ -16,7 +16,7 @@ import type {
 import { LineChart } from "../../components/LineChart";
 import { pct, returnClass } from "../../lib/format";
 
-const NAV_COLORS = { strategy: "#0d3a6b", benchmark: "#a8b6c8" };
+const NAV_COLORS = { strategy: "#147d6f", benchmark: "#a8b6c8" };
 
 type RunView = {
   name: string;
@@ -139,7 +139,7 @@ export function StrategyLabPage() {
           <h2>
             <LineChartIcon size={18} aria-hidden="true" /> 策略回测
           </h2>
-          <p>筛选 → 排序 → Top N 等权，月度调仓 + 双边佣金 + 涨停约束（主板 10% / 创业板科创板 20%）</p>
+          <p>Top N 等权 · 月度调仓 · 含佣金与涨跌停约束</p>
         </div>
         <div className="lab-form">
           <label>

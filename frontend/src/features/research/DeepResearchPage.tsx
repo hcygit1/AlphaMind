@@ -242,12 +242,14 @@ export function DeepResearchPage() {
       <div className="panel research-panel">
         <div className="panel-heading">
           <div>
-            <h2>Launch Research</h2>
+            <h2>启动研究</h2>
             <p>输入股票与交易日期，创建一份完整的深度投研报告。</p>
           </div>
-          <span className={"status-pill " + statusClass}>
-            {loadingActiveTask ? "同步中" : task ? statusLabels[task.status] : "可启动"}
-          </span>
+          {(loadingActiveTask || task) && (
+            <span className={"status-pill " + statusClass}>
+              {loadingActiveTask ? "同步中" : statusLabels[task!.status]}
+            </span>
+          )}
         </div>
         <form className="research-form" onSubmit={handleSubmit}>
           <label>
@@ -311,14 +313,14 @@ export function DeepResearchPage() {
       </div>
       <div className="panel progress-panel">
         <div className="panel-heading compact">
-          <h2>Research Queue</h2>
-          <span className="muted">{task ? statusLabels[task.status] : "No active task"}</span>
+          <h2>研究队列</h2>
+          {task && <span className={"status-pill " + statusClass}>{statusLabels[task.status]}</span>}
         </div>
         {task ? (
           <div className="task-status">
             <div className="task-state-banner">
               <div>
-                <span className="workspace-kicker">CURRENT RUN</span>
+                <span className="workspace-kicker">当前任务</span>
                 <strong>{task.ticker} · {task.trade_date}</strong>
               </div>
               <span className={"status-pill " + statusClass}>{statusLabels[task.status]}</span>
@@ -372,33 +374,18 @@ export function DeepResearchPage() {
           </div>
         ) : null}
         <ol className="timeline progress-events">
-          {(events.length ? events : ["提交后，研究任务将在队列中等待执行。"]).map((item, index) => (
+          {(events.length
+            ? events
+            : ["提交研究任务后，这里会实时显示阶段与最新状态。"]
+          ).map((item, index) => (
             <li key={`${item}-${index}`}>
               <span />
               <div>
-                <strong>{events.length ? `进度 ${index + 1}` : "创建研究任务"}</strong>
+                {events.length ? <strong>进度 {index + 1}</strong> : null}
                 <p>{item}</p>
               </div>
             </li>
           ))}
-          {!events.length && (
-            <>
-              <li>
-                <span />
-                <div>
-                  <strong>跟踪研究进度</strong>
-                  <p>任务运行时，这里会展示当前阶段和最新状态。</p>
-                </div>
-              </li>
-              <li>
-                <span />
-                <div>
-                  <strong>查看研究报告</strong>
-                  <p>任务完成后，可在报告页打开生成的投研报告。</p>
-                </div>
-              </li>
-            </>
-          )}
         </ol>
       </div>
       <AutomationPanel />
