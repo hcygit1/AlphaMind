@@ -126,6 +126,8 @@ export type TradeDecision = {
   position_pct?: number | null;
   settlement_days: number;
   status: string;
+  /** Judge/拒绝详情 JSON：rejected 时含 reject_reason */
+  judge_json?: string | null;
   created_at: string;
 };
 

@@ -54,11 +54,15 @@ export function OrdersPositionsPage() {
     return list;
   }, [accountData?.orders]);
 
-  // 每只持仓的最新已执行决策（含止损/目标价，供风控参考）
+  // 每只持仓的最新已执行决策（含止损/目标价，供风控参考）；
+  // 结算后状态流转为 settled，与 executed 同样视为有效持仓计划
   const planByTicker = useMemo(() => {
     const map = new Map<string, TradeDecision>();
     for (const decision of decisions) {
-      if (decision.status === "executed" && (decision.stop_loss || decision.price_target)) {
+      if (
+        (decision.status === "executed" || decision.status === "settled") &&
+        (decision.stop_loss || decision.price_target)
+      ) {
         map.set(decision.ticker, decision);
       }
     }
@@ -136,7 +140,7 @@ export function OrdersPositionsPage() {
               <span>可卖（T+1）</span>
               <span>平均成本</span>
               <span>成本合计</span>
-              <span>仓位占比</span>
+              <span>占持仓成本</span>
               <span>风控参考（止损 → 目标）</span>
             </div>
             {positions.map((position) => {

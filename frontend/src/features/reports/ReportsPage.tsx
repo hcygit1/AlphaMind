@@ -2,6 +2,7 @@ import { FileSearch, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { getReport, listReports } from "../../api/client";
 import type { ReportDetailResponse, ReportSummary } from "../../api/types";
+import { stripMarkdown } from "../../lib/format";
 import { ReportDetail } from "./ReportDetail";
 
 export function ReportsPage() {
@@ -25,6 +26,10 @@ export function ReportsPage() {
           return;
         }
         setReports(loaded);
+        // 默认选中第一份报告，避免右侧详情区长期空置
+        if (loaded.length > 0) {
+          void openReport(loaded[0]);
+        }
       } catch (exc) {
         if (mounted) {
           setError(exc instanceof Error ? exc.message : String(exc));
@@ -94,7 +99,7 @@ export function ReportsPage() {
               >
                 <strong>{report.ticker}</strong>
                 <span>{report.trade_date} · {report.signal}</span>
-                <small>{report.summary}</small>
+                <small>{stripMarkdown(report.summary)}</small>
               </button>
             ))}
           {!loadingList && reports.length === 0 && (

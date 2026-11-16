@@ -288,7 +288,7 @@ function EquityCurve({
           <line x1={padLeft} x2={width - padRight} y1={baselineY} y2={baselineY} className="equity-baseline" />
         )}
         <path d={areaPath} className="equity-area" />
-        <polyline points={linePoints} className="equity-line" />
+        <polyline points={linePoints} className="equity-line" fill="none" />
         {points.map((p) => (
           <circle key={p.snapshot.id} cx={p.x} cy={p.y} r={3.5} className="equity-dot" />
         ))}

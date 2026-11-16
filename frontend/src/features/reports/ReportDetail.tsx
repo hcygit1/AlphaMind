@@ -11,7 +11,7 @@ import {
   type AgentContextSyncDetail
 } from "../../api/client";
 import type { ReportDetailResponse, TradeDecision } from "../../api/types";
-import { DECISION_STATUS_LABEL } from "../../lib/format";
+import { DECISION_STATUS_LABEL, stripMarkdown } from "../../lib/format";
 
 export function ReportDetail({ detail }: { detail: ReportDetailResponse }) {
   const [activeTab, setActiveTab] = useState(detail.sections[0]?.id ?? "");
@@ -127,7 +127,7 @@ export function ReportDetail({ detail }: { detail: ReportDetailResponse }) {
         </div>
         <div className="report-summary-card">
           <strong>决策摘要</strong>
-          <p>{detail.report.summary}</p>
+          <p>{stripMarkdown(detail.report.summary)}</p>
         </div>
         {decision && (
           <div className="decision-card">
@@ -189,7 +189,7 @@ export function ReportDetail({ detail }: { detail: ReportDetailResponse }) {
           </div>
           <div className="section-summary-box">
             <strong>快速摘要</strong>
-            <p>{active.summary || "暂无摘要"}</p>
+            <p>{active.summary ? stripMarkdown(active.summary) : "暂无摘要"}</p>
           </div>
           <div className="markdown-body">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{active.raw || active.summary || "暂无正文"}</ReactMarkdown>
